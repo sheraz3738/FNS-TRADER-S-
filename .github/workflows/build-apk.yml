@@ -3,7 +3,8 @@ name: Build FNS TRADER'S APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   build:
@@ -18,6 +19,9 @@ jobs:
         with:
           flutter-version: '3.35.0'
           channel: stable
+
+      - name: Create Android project files
+        run: flutter create --platforms=android .
 
       - name: Get dependencies
         run: flutter pub get
