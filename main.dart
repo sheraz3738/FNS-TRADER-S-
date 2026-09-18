@@ -38,8 +38,7 @@ class _FnsAppState extends State<FnsApp> {
     final msg = Uri.encodeComponent(
       "FNS TRADER'S Order\n$items\nTotal: Rs. $total\n\nDelivery address: ",
     );
-    // Add the confirmed FNS WhatsApp number here before release.
-    final uri = Uri.parse('https://wa.me/?text=$msg');
+    final uri = Uri.parse('https://wa.me/923343738405?text=$msg');
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
@@ -92,7 +91,7 @@ class _FnsAppState extends State<FnsApp> {
         body: Column(
           children: [
             const SizedBox(height: 12),
-            Image.asset('assets/fns_logo.png', height: 100),
+            Image.asset('fns_logo.png', height: 100),
             Padding(
               padding: const EdgeInsets.all(12),
               child: TextField(
