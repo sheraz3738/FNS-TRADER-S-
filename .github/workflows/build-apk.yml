@@ -26,6 +26,11 @@ jobs:
           cp -r temp_app/android .
           rm -rf temp_app
 
+      - name: Put FNS app code in lib
+        run: |
+          mkdir -p lib
+          cp main.dart lib/main.dart
+
       - name: Get dependencies
         run: flutter pub get
 
