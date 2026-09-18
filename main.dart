@@ -620,7 +620,7 @@ ${order.address}
         ListTile(
           leading: const Icon(Icons.chat),
           title: const Text('WhatsApp'),
-          subtitle: const Text('Contact FNS TRADER\\'S'),
+          subtitle: const Text("Contact FNS TRADER'S"),
           onTap: () {
             openWhatsApp("Assalam o Alaikum FNS TRADER'S");
           },
