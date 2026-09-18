@@ -77,7 +77,7 @@ class _FnsAppState extends State<FnsApp> {
                         const SizedBox(height: 8),
                         FilledButton.icon(
                           onPressed: cart.isEmpty ? null : checkout,
-                          icon: const Icon(Icons.whatsapp),
+                          icon: const Icon(Icons.chat),
                           label: const Text('Order on WhatsApp'),
                         ),
                       ],
