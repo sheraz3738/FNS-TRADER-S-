@@ -1,14 +1,34 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(const FnsApp());
 
 class Product {
+  String id;
   String name;
   int price;
   String category;
+  bool stock;
 
-  Product(this.name, this.price, this.category);
+  Product(this.id, this.name, this.price, this.category, {this.stock = true});
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'price': price,
+        'category': category,
+        'stock': stock,
+      };
+
+  factory Product.fromJson(Map<String, dynamic> j) => Product(
+        j['id'] ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        j['name'] ?? '',
+        int.tryParse('${j['price'] ?? 0}') ?? 0,
+        j['category'] ?? 'Other',
+        stock: j['stock'] ?? true,
+      );
 }
 
 class Order {
@@ -27,6 +47,24 @@ class Order {
     required this.total,
     required this.items,
   });
+
+  Map<String, dynamic> toJson() => {
+        'customer': customer,
+        'phone': phone,
+        'address': address,
+        'payment': payment,
+        'total': total,
+        'items': items,
+      };
+
+  factory Order.fromJson(Map<String, dynamic> j) => Order(
+        customer: j['customer'] ?? '',
+        phone: j['phone'] ?? '',
+        address: j['address'] ?? '',
+        payment: j['payment'] ?? 'Cash on Delivery',
+        total: int.tryParse('${j['total'] ?? 0}') ?? 0,
+        items: j['items'] ?? '',
+      );
 }
 
 class FnsApp extends StatefulWidget {
@@ -38,11 +76,11 @@ class FnsApp extends StatefulWidget {
 
 class _FnsAppState extends State<FnsApp> {
   final List<Product> products = [
-    Product('Hydryllin Syrup 120ml', 200, 'Syrup'),
-    Product('Pulmonol Syrup 120ml', 200, 'Syrup'),
-    Product('Lederplex Syrup 150ml', 234, 'Syrup'),
-    Product('Extor 5/80 Tablet', 490, 'Tablet'),
-    Product('Risek 40mg Capsule', 861, 'Capsule'),
+    Product('1', 'Hydryllin Syrup 120ml', 200, 'Syrup'),
+    Product('2', 'Pulmonol Syrup 120ml', 200, 'Syrup'),
+    Product('3', 'Lederplex Syrup 150ml', 234, 'Syrup'),
+    Product('4', 'Extor 5/80 Tablet', 490, 'Tablet'),
+    Product('5', 'Risek 40mg Capsule', 861, 'Capsule'),
   ];
 
   final Map<Product, int> cart = {};
@@ -52,6 +90,7 @@ class _FnsAppState extends State<FnsApp> {
   String search = '';
   String selectedCategory = 'All';
   int bottomIndex = 0;
+  bool loading = true;
 
   int get total =>
       cart.entries.fold(0, (sum, e) => sum + e.key.price * e.value);
@@ -59,7 +98,85 @@ class _FnsAppState extends State<FnsApp> {
   int get cartCount =>
       cart.values.fold(0, (sum, quantity) => sum + quantity);
 
+  @override
+  void initState() {
+    super.initState();
+    loadSavedData();
+  }
+
+  Future<void> loadSavedData() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final savedProducts = prefs.getString('fns_products');
+    final savedOrders = prefs.getString('fns_orders');
+
+    if (savedProducts != null) {
+      final list = jsonDecode(savedProducts) as List;
+
+      products
+        ..clear()
+        ..addAll(
+          list.map(
+            (e) => Product.fromJson(
+              Map<String, dynamic>.from(e),
+            ),
+          ),
+        );
+    }
+
+    if (savedOrders != null) {
+      final list = jsonDecode(savedOrders) as List;
+
+      orders
+        ..clear()
+        ..addAll(
+          list.map(
+            (e) => Order.fromJson(
+              Map<String, dynamic>.from(e),
+            ),
+          ),
+        );
+    }
+
+    if (mounted) {
+      setState(() {
+        loading = false;
+      });
+    }
+  }
+
+  Future<void> saveProducts() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString(
+      'fns_products',
+      jsonEncode(
+        products.map((p) => p.toJson()).toList(),
+      ),
+    );
+  }
+
+  Future<void> saveOrders() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString(
+      'fns_orders',
+      jsonEncode(
+        orders.map((o) => o.toJson()).toList(),
+      ),
+    );
+  }
+
   void addToCart(Product product) {
+    if (!product.stock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This product is out of stock'),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       cart[product] = (cart[product] ?? 0) + 1;
     });
@@ -87,6 +204,7 @@ class _FnsAppState extends State<FnsApp> {
 
   Future<void> openWhatsApp(String message) async {
     final encoded = Uri.encodeComponent(message);
+
     final uri = Uri.parse(
       'https://wa.me/923343738405?text=$encoded',
     );
@@ -107,7 +225,10 @@ class _FnsAppState extends State<FnsApp> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.medication, size: 60),
+              const Icon(
+                Icons.medication,
+                size: 60,
+              ),
               const SizedBox(height: 10),
               Text(
                 product.name,
@@ -120,7 +241,6 @@ class _FnsAppState extends State<FnsApp> {
               const SizedBox(height: 8),
               Text(
                 'Category: ${product.category}',
-                style: const TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 8),
               Text(
@@ -130,12 +250,18 @@ class _FnsAppState extends State<FnsApp> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(height: 8),
+              Text(
+                product.stock ? 'In Stock' : 'Out of Stock',
+              ),
               const SizedBox(height: 20),
               FilledButton.icon(
-                onPressed: () {
-                  addToCart(product);
-                  Navigator.pop(context);
-                },
+                onPressed: product.stock
+                    ? () {
+                        addToCart(product);
+                        Navigator.pop(context);
+                      }
+                    : null,
                 icon: const Icon(Icons.shopping_cart),
                 label: const Text('Add to Cart'),
               ),
@@ -157,7 +283,8 @@ class _FnsAppState extends State<FnsApp> {
             return Padding(
               padding: const EdgeInsets.all(16),
               child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.75,
+                height:
+                    MediaQuery.of(context).size.height * .75,
                 child: Column(
                   children: [
                     const Text(
@@ -174,36 +301,45 @@ class _FnsAppState extends State<FnsApp> {
                               child: Text('Cart is empty'),
                             )
                           : ListView(
-                              children: cart.entries.map((entry) {
-                                final product = entry.key;
-                                final quantity = entry.value;
+                              children:
+                                  cart.entries.map((entry) {
+                                final p = entry.key;
+                                final q = entry.value;
 
                                 return Card(
                                   child: ListTile(
-                                    title: Text(product.name),
-                                    subtitle: Text(
-                                      'Rs. ${product.price} × $quantity',
+                                    title: Text(p.name),
+                                    subtitle:
+                                        Text(
+                                      'Rs. ${p.price} × $q',
                                     ),
                                     trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
+                                      mainAxisSize:
+                                          MainAxisSize.min,
                                       children: [
                                         IconButton(
                                           onPressed: () {
-                                            removeFromCart(product);
-                                            setSheetState(() {});
+                                            removeFromCart(p);
+                                            setSheetState(
+                                              () {},
+                                            );
                                           },
                                           icon: const Icon(
-                                            Icons.remove_circle_outline,
+                                            Icons
+                                                .remove_circle_outline,
                                           ),
                                         ),
-                                        Text('$quantity'),
+                                        Text('$q'),
                                         IconButton(
                                           onPressed: () {
-                                            addToCart(product);
-                                            setSheetState(() {});
+                                            addToCart(p);
+                                            setSheetState(
+                                              () {},
+                                            );
                                           },
                                           icon: const Icon(
-                                            Icons.add_circle_outline,
+                                            Icons
+                                                .add_circle_outline,
                                           ),
                                         ),
                                       ],
@@ -231,7 +367,9 @@ class _FnsAppState extends State<FnsApp> {
                                 Navigator.pop(context);
                                 showCheckout();
                               },
-                        icon: const Icon(Icons.receipt_long),
+                        icon: const Icon(
+                          Icons.receipt_long,
+                        ),
                         label: const Text('Checkout'),
                       ),
                     ),
@@ -246,9 +384,9 @@ class _FnsAppState extends State<FnsApp> {
   }
 
   void showCheckout() {
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
-    final addressController = TextEditingController();
+    final name = TextEditingController();
+    final phone = TextEditingController();
+    final address = TextEditingController();
 
     String payment = 'Cash on Delivery';
 
@@ -263,49 +401,61 @@ class _FnsAppState extends State<FnsApp> {
                 child: Column(
                   children: [
                     TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
+                      controller: name,
+                      decoration:
+                          const InputDecoration(
                         labelText: 'Customer Name',
-                        prefixIcon: Icon(Icons.person),
+                        prefixIcon:
+                            Icon(Icons.person),
                       ),
                     ),
                     const SizedBox(height: 10),
                     TextField(
-                      controller: phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
+                      controller: phone,
+                      keyboardType:
+                          TextInputType.phone,
+                      decoration:
+                          const InputDecoration(
                         labelText: 'Mobile Number',
-                        prefixIcon: Icon(Icons.phone),
+                        prefixIcon:
+                            Icon(Icons.phone),
                       ),
                     ),
                     const SizedBox(height: 10),
                     TextField(
-                      controller: addressController,
+                      controller: address,
                       maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Delivery Address',
-                        prefixIcon: Icon(Icons.location_on),
+                      decoration:
+                          const InputDecoration(
+                        labelText:
+                            'Delivery Address',
+                        prefixIcon:
+                            Icon(Icons.location_on),
                       ),
                     ),
                     const SizedBox(height: 15),
                     DropdownButtonFormField<String>(
                       initialValue: payment,
-                      decoration: const InputDecoration(
-                        labelText: 'Payment Method',
-                        prefixIcon: Icon(Icons.payment),
+                      decoration:
+                          const InputDecoration(
+                        labelText:
+                            'Payment Method',
+                        prefixIcon:
+                            Icon(Icons.payment),
                       ),
                       items: const [
                         DropdownMenuItem(
-                          value: 'Cash on Delivery',
-                          child: Text('Cash on Delivery'),
+                          value:
+                              'Cash on Delivery',
+                          child: Text(
+                              'Cash on Delivery'),
                         ),
                       ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setDialogState(() {
-                            payment = value;
-                          });
-                        }
+                      onChanged: (v) {
+                        setDialogState(() {
+                          payment =
+                              v ?? payment;
+                        });
                       },
                     ),
                   ],
@@ -313,17 +463,29 @@ class _FnsAppState extends State<FnsApp> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                  onPressed: () =>
+                      Navigator.pop(context),
+                  child:
+                      const Text('Cancel'),
                 ),
                 FilledButton(
                   onPressed: () async {
-                    if (nameController.text.trim().isEmpty ||
-                        phoneController.text.trim().isEmpty ||
-                        addressController.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                    if (name.text
+                            .trim()
+                            .isEmpty ||
+                        phone.text
+                            .trim()
+                            .isEmpty ||
+                        address.text
+                            .trim()
+                            .isEmpty) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(
                         const SnackBar(
-                          content: Text('Please fill all details'),
+                          content: Text(
+                            'Please fill all details',
+                          ),
                         ),
                       );
                       return;
@@ -337,9 +499,12 @@ class _FnsAppState extends State<FnsApp> {
                         .join('\n');
 
                     final order = Order(
-                      customer: nameController.text.trim(),
-                      phone: phoneController.text.trim(),
-                      address: addressController.text.trim(),
+                      customer:
+                          name.text.trim(),
+                      phone:
+                          phone.text.trim(),
+                      address:
+                          address.text.trim(),
                       payment: payment,
                       total: total,
                       items: items,
@@ -348,6 +513,8 @@ class _FnsAppState extends State<FnsApp> {
                     setState(() {
                       orders.add(order);
                     });
+
+                    await saveOrders();
 
                     final message = '''
 FNS TRADER'S ORDER
@@ -366,21 +533,28 @@ Delivery Address:
 ${order.address}
 ''';
 
-                    cart.clear();
+                    setState(() {
+                      cart.clear();
+                    });
 
                     Navigator.pop(context);
 
                     await openWhatsApp(message);
 
                     if (mounted) {
-                      ScaffoldMessenger.of(this.context).showSnackBar(
+                      ScaffoldMessenger.of(
+                        this.context,
+                      ).showSnackBar(
                         const SnackBar(
-                          content: Text('Order details sent to WhatsApp'),
+                          content: Text(
+                            'Order details sent to WhatsApp',
+                          ),
                         ),
                       );
                     }
                   },
-                  child: const Text('Place Order'),
+                  child:
+                      const Text('Place Order'),
                 ),
               ],
             );
@@ -391,20 +565,26 @@ ${order.address}
   }
 
   List<String> get categories {
-    final list = products.map((p) => p.category).toSet().toList();
+    final list = products
+        .map((p) => p.category)
+        .where((x) => x.trim().isNotEmpty)
+        .toSet()
+        .toList();
+
     return ['All', ...list];
   }
 
   List<Product> get shownProducts {
     return products.where((product) {
-      final matchesSearch =
-          product.name.toLowerCase().contains(search.toLowerCase());
+      final searchMatch = product.name
+          .toLowerCase()
+          .contains(search.toLowerCase());
 
-      final matchesCategory =
+      final categoryMatch =
           selectedCategory == 'All' ||
           product.category == selectedCategory;
 
-      return matchesSearch && matchesCategory;
+      return searchMatch && categoryMatch;
     }).toList();
   }
 
@@ -413,7 +593,6 @@ ${order.address}
       children: [
         const SizedBox(height: 10),
 
-        // Logo
         Image.asset(
           'fns_logo.png',
           height: 105,
@@ -422,14 +601,17 @@ ${order.address}
         Padding(
           padding: const EdgeInsets.all(12),
           child: TextField(
-            decoration: const InputDecoration(
+            decoration:
+                const InputDecoration(
               labelText: 'Search products',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(),
+              prefixIcon:
+                  Icon(Icons.search),
+              border:
+                  OutlineInputBorder(),
             ),
-            onChanged: (value) {
+            onChanged: (v) {
               setState(() {
-                search = value;
+                search = v;
               });
             },
           ),
@@ -438,17 +620,29 @@ ${order.address}
         SizedBox(
           height: 45,
           child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            children: categories.map((category) {
+            scrollDirection:
+                Axis.horizontal,
+            padding:
+                const EdgeInsets.symmetric(
+              horizontal: 10,
+            ),
+            children:
+                categories.map((category) {
               return Padding(
-                padding: const EdgeInsets.only(right: 8),
+                padding:
+                    const EdgeInsets.only(
+                  right: 8,
+                ),
                 child: ChoiceChip(
-                  label: Text(category),
-                  selected: selectedCategory == category,
+                  label:
+                      Text(category),
+                  selected:
+                      selectedCategory ==
+                          category,
                   onSelected: (_) {
                     setState(() {
-                      selectedCategory = category;
+                      selectedCategory =
+                          category;
                     });
                   },
                 ),
@@ -462,235 +656,31 @@ ${order.address}
         Expanded(
           child: shownProducts.isEmpty
               ? const Center(
-                  child: Text('No products found'),
+                  child:
+                      Text('No products found'),
                 )
               : ListView.builder(
-                  itemCount: shownProducts.length,
-                  itemBuilder: (_, index) {
-                    final product = shownProducts[index];
+                  itemCount:
+                      shownProducts.length,
+                  itemBuilder:
+                      (_, index) {
+                    final p =
+                        shownProducts[index];
 
                     return Card(
-                      margin: const EdgeInsets.symmetric(
+                      margin:
+                          const EdgeInsets
+                              .symmetric(
                         horizontal: 12,
                         vertical: 6,
                       ),
                       child: ListTile(
-                        onTap: () => showProductDetails(product),
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.medication),
-                        ),
-                        title: Text(
-                          product.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${product.category}\nRetail: Rs. ${product.price}',
-                        ),
-                        isThreeLine: true,
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                              onPressed: () => toggleFavorite(product),
-                              icon: Icon(
-                                favorites.contains(product)
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                              ),
-                            ),
-                            FilledButton(
-                              onPressed: () => addToCart(product),
-                              child: const Text('Add'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget favoritesPage() {
-    final favs = favorites.toList();
-
-    if (favs.isEmpty) {
-      return const Center(
-        child: Text(
-          'No favorite products',
-          style: TextStyle(fontSize: 18),
-        ),
-      );
-    }
-
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: favs.map((product) {
-        return Card(
-          child: ListTile(
-            title: Text(product.name),
-            subtitle: Text('Rs. ${product.price}'),
-            trailing: FilledButton(
-              onPressed: () => addToCart(product),
-              child: const Text('Add'),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget ordersPage() {
-    if (orders.isEmpty) {
-      return const Center(
-        child: Text(
-          'No orders yet',
-          style: TextStyle(fontSize: 18),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: orders.length,
-      itemBuilder: (_, index) {
-        final order = orders[index];
-
-        return Card(
-          child: ExpansionTile(
-            leading: const Icon(Icons.receipt_long),
-            title: Text(
-              'Order ${index + 1}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text('Rs. ${order.total} • ${order.payment}'),
-            children: [
-              ListTile(
-                title: const Text('Customer'),
-                subtitle: Text('${order.customer} • ${order.phone}'),
-              ),
-              ListTile(
-                title: const Text('Items'),
-                subtitle: Text(order.items),
-              ),
-              ListTile(
-                title: const Text('Delivery Address'),
-                subtitle: Text(order.address),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget aboutPage() {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Image.asset(
-          'fns_logo.png',
-          height: 130,
-        ),
-        const SizedBox(height: 20),
-        const Text(
-          "FNS TRADER'S",
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          "BABA FALAK NAZ & SON'S TRADER'S",
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 17),
-        ),
-        const SizedBox(height: 20),
-        const ListTile(
-          leading: Icon(Icons.phone),
-          title: Text('Call / WhatsApp'),
-          subtitle: Text('0334-3738405'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.chat),
-          title: const Text('WhatsApp'),
-          subtitle: const Text("Contact FNS TRADER'S"),
-          onTap: () {
-            openWhatsApp("Assalam o Alaikum FNS TRADER'S");
-          },
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pages = [
-      homePage(),
-      favoritesPage(),
-      ordersPage(),
-      aboutPage(),
-    ];
-
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: "FNS TRADER'S",
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.green,
-      ),
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text("FNS TRADER'S"),
-          actions: [
-            Badge(
-              label: Text('$cartCount'),
-              isLabelVisible: cartCount > 0,
-              child: IconButton(
-                icon: const Icon(Icons.shopping_cart),
-                onPressed: showCart,
-              ),
-            ),
-          ],
-        ),
-        body: pages[bottomIndex],
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: bottomIndex,
-          onDestinationSelected: (index) {
-            setState(() {
-              bottomIndex = index;
-            });
-          },
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
-              label: 'Home',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.favorite_border),
-              selectedIcon: Icon(Icons.favorite),
-              label: 'Favorites',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(Icons.receipt_long),
-              label: 'Orders',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.info_outline),
-              selectedIcon: Icon(Icons.info),
-              label: 'About',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+                        onTap: () =>
+                            showProductDetails(
+                                p),
+                        leading:
+                            CircleAvatar(
+                          child: Icon(
+                            p.stock
+                                ? Icons
+   
