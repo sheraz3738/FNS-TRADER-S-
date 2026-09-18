@@ -14,4 +14,5 @@ dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/fns_logo.png
+    assets:
+   - fns_logo.png
