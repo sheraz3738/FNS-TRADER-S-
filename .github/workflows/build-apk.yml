@@ -25,6 +25,9 @@ jobs:
           flutter create --platforms=android temp_app
           cp -r temp_app/android .
           rm -rf temp_app
+      - name: Set NDK version
+        run: |
+          sed -i 's/27.0.12077973/27.3.13750724/g' android/app/build.gradle.kts
 
       - name: Put FNS app code in lib
         run: |
