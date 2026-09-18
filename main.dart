@@ -662,11 +662,15 @@ ${order.address}
                         trailing: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            IconButton(
-                              onPressed: () => toggleFavorite(p),
-                              icon: Icon(
-                                favorites.contains(p)
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
+                         IconButton(
+                         onPressed: () => toggleFavorite(p),
+                         icon: Icon(
+                         favorites.contains(p)
+                         ? Icons.favorite
+                         : Icons.favorite_border,
+                              ),
+                            ),
+                          ],
+                        ),
 ),
                          
