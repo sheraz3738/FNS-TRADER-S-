@@ -631,7 +631,7 @@ ${order.address}
           ),
         ),
         const SizedBox(height: 8),
-        Expanded(
+                Expanded(
           child: shownProducts.isEmpty
               ? const Center(
                   child: Text('No products found'),
@@ -662,15 +662,20 @@ ${order.address}
                         trailing: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                         IconButton(
-                         onPressed: () => toggleFavorite(p),
-                         icon: Icon(
-                         favorites.contains(p)
-                         ? Icons.favorite
-                         : Icons.favorite_border,
+                            IconButton(
+                              onPressed: () => toggleFavorite(p),
+                              icon: Icon(
+                                favorites.contains(p)
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
                               ),
                             ),
                           ],
                         ),
+                      ),
+                    );
+                  },
+                ),
+        ),
 ),
                          
