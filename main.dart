@@ -682,23 +682,150 @@ ${order.address}
   }
     @override
   Widget build(BuildContext context) {
+    Widget page;
+
+    if (bottomIndex == 0) {
+      page = homePage();
+    } else if (bottomIndex == 1) {
+      page = favorites.isEmpty
+          ? const Center(
+              child: Text('No favorite products'),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(12),
+              children: favorites.map((p) {
+                return Card(
+                  child: ListTile(
+                    leading: productImage(p, size: 55),
+                    title: Text(p.name),
+                    subtitle: Text('Retail: Rs. ${p.price}'),
+                    trailing: IconButton(
+                      onPressed: () => toggleFavorite(p),
+                      icon: const Icon(Icons.favorite),
+                    ),
+                    onTap: () => showProductDetails(p),
+                  ),
+                );
+              }).toList(),
+            );
+    } else if (bottomIndex == 2) {
+      page = orders.isEmpty
+          ? const Center(
+              child: Text('No orders yet'),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(12),
+              children: orders.map((order) {
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.receipt_long),
+                    title: Text(order.customer),
+                    subtitle: Text(
+                      '${order.items}\nTotal: Rs. ${order.total}\n'
+                      'Address: ${order.address}',
+                    ),
+                    isThreeLine: true,
+                  ),
+                );
+              }).toList(),
+            );
+    } else if (bottomIndex == 3) {
+      page = const Center(
+        child: Padding(
+          padding: EdgeInsets.all(25),
+          child: Text(
+            "FNS TRADER'S\n\n"
+            "BA FALAK NAZ & SON'S TRADER'S\n\n"
+            "Call / WhatsApp: 0334-3738405",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    } else {
+      page = const Center(
+        child: Text(
+          'Admin Panel\n\nComing in next step',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: "FNS TRADER'S",
       home: Scaffold(
         appBar: AppBar(
-          title: const Text("FNS TRADER'S"),
+          title: Text(
+            bottomIndex == 0
+                ? "FNS TRADER'S"
+                : bottomIndex == 1
+                    ? 'Favorites'
+                    : bottomIndex == 2
+                        ? 'Orders'
+                        : bottomIndex == 3
+                            ? 'About'
+                            : 'Admin',
+          ),
           actions: [
             IconButton(
               onPressed: showCart,
-              icon: const Icon(Icons.shopping_cart),
+              icon: Badge(
+                label: Text('$cartCount'),
+                isLabelVisible: cartCount > 0,
+                child: const Icon(Icons.shopping_cart),
+              ),
             ),
           ],
         ),
         body: loading
-            ? const Center(child: CircularProgressIndicator())
-            : homePage(),
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
+            : page,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: bottomIndex,
+          onDestinationSelected: (index) {
+            setState(() {
+              bottomIndex = index;
+            });
+          },
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.favorite_border),
+              selectedIcon: Icon(Icons.favorite),
+              label: 'Favorites',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long),
+              label: 'Orders',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.info_outline),
+              selectedIcon: Icon(Icons.info),
+              label: 'About',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.admin_panel_settings_outlined),
+              selectedIcon: Icon(Icons.admin_panel_settings),
+              label: 'Admin',
+            ),
+          ],
+        ),
       ),
     );
   }
-}                       
+}                         
