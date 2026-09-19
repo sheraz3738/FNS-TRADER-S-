@@ -585,7 +585,79 @@ ${order.address}
       return searchMatch && categoryMatch;
     }).toList();
   }
+void showAdminLogin() {
+  final password = TextEditingController();
 
+  showDialog(
+    context: context,
+    builder: (_) {
+      return AlertDialog(
+        title: const Text('Admin Login'),
+        content: TextField(
+          controller: password,
+          obscureText: true,
+          decoration: const InputDecoration(
+            labelText: 'Admin Password',
+            prefixIcon: Icon(Icons.lock),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (password.text == '1234') {
+                Navigator.pop(context);
+                showAdminPanel();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Wrong password'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Login'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+void showAdminPanel() {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) {
+      return SizedBox(
+        height: MediaQuery.of(context).size.height * 0.7,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Admin Panel',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Product management will be added here.',
+                style: TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
   Widget homePage() {
     return Column(
       children: [
@@ -745,19 +817,16 @@ ${order.address}
           ),
         ),
       );
-    } else {
-      page = const Center(
-        child: Text(
-          'Admin Panel\n\nComing in next step',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
+    
+} else {
+  page = Center(
+    child: FilledButton.icon(
+      onPressed: showAdminLogin,
+      icon: const Icon(Icons.admin_panel_settings),
+      label: const Text('Open Admin Panel'),
+    ),
+  );
     }
-
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: "FNS TRADER'S",
