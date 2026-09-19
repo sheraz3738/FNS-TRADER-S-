@@ -819,14 +819,18 @@ void showAdminPanel() {
       );
     
 } else {
-  page = Center(
-    child: FilledButton.icon(
-      onPressed: showAdminLogin,
-      icon: const Icon(Icons.admin_panel_settings),
-      label: const Text('Open Admin Panel'),
-    ),
+  page = Builder(
+    builder: (adminContext) {
+      return Center(
+        child: FilledButton.icon(
+          onPressed: () => showAdminLogin(adminContext),
+          icon: const Icon(Icons.admin_panel_settings),
+          label: const Text('Open Admin Panel'),
+        ),
+      );
+    },
   );
-    }
+}
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: "FNS TRADER'S",
