@@ -680,4 +680,25 @@ ${order.address}
       ],
     );
   }
-                         
+    @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: "FNS TRADER'S",
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text("FNS TRADER'S"),
+          actions: [
+            IconButton(
+              onPressed: showCart,
+              icon: const Icon(Icons.shopping_cart),
+            ),
+          ],
+        ),
+        body: loading
+            ? const Center(child: CircularProgressIndicator())
+            : homePage(),
+      ),
+    );
+  }
+}                       
