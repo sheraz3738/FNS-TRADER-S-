@@ -585,11 +585,11 @@ ${order.address}
       return searchMatch && categoryMatch;
     }).toList();
   }
-void showAdminLogin() {
+void showAdminLogin(BuildContext dialogContext) {
   final password = TextEditingController();
 
   showDialog(
-    context: context,
+    context: dialogContext,
     builder: (_) {
       return AlertDialog(
         title: const Text('Admin Login'),
@@ -610,7 +610,7 @@ void showAdminLogin() {
             onPressed: () {
               if (password.text == '1234') {
                 Navigator.pop(context);
-                showAdminPanel();
+                showAdminPanel(dialogContext);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -627,9 +627,9 @@ void showAdminLogin() {
   );
 }
 
-void showAdminPanel() {
+void showAdminPanel(BuildContext dialogContext) {
   showModalBottomSheet(
-    context: context,
+    context: dialogContext,
     isScrollControlled: true,
     builder: (_) {
       return SizedBox(
