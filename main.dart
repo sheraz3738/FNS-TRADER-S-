@@ -609,10 +609,10 @@ void showAdminLogin(BuildContext dialogContext) {
           FilledButton(
             onPressed: () {
               if (password.text == '1234') {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
                 showAdminPanel(dialogContext);
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
                   const SnackBar(
                     content: Text('Wrong password'),
                   ),
@@ -627,6 +627,7 @@ void showAdminLogin(BuildContext dialogContext) {
   );
 }
 
+void showAdminPanel(BuildContext dialogContext) {
 void showAdminPanel(BuildContext dialogContext) {
   showModalBottomSheet(
     context: dialogContext,
