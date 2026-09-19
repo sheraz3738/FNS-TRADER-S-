@@ -666,8 +666,8 @@ ${order.address}
                               onPressed: () => toggleFavorite(p),
                               icon: Icon(
                                 favorites.contains(p)
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
+                             ? Icons.favorite
+                              : Icons.favorite_border,
                               ),
                             ),
                           ],
@@ -677,5 +677,7 @@ ${order.address}
                   },
                 ),
         ),
-),
+      ],
+    );
+  }
                          
