@@ -1,81 +1,84 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-void main() => runApp(const FnsApp());
-
-class Product {
-  String id;
-  String name;
-  int price;
-  String category;
-  bool stock;
-  String? imageBase64;
-
-  Product(
-    this.id,
-    this.name,
-    this.price,
-    this.category, {
-    this.stock = true,
-    this.imageBase64,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'price': price,
-        'category': category,
-        'stock': stock,
-        'imageBase64': imageBase64,
-      };
-
-  factory Product.fromJson(Map<String, dynamic> j) => Product(
-        j['id'] ?? DateTime.now().microsecondsSinceEpoch.toString(),
-        j['name'] ?? '',
-        int.tryParse('${j['price'] ?? 0}') ?? 0,
-        j['category'] ?? 'Other',
-        stock: j['stock'] ?? true,
-        imageBase64: j['imageBase64'],
-      );
+void main() {
+  runApp(const FnsApp());
 }
 
-class Order {
+class Product {
+  String name;
+  int price;
+  bool inStock;
+  String imageBase64;
+
+  Product({
+    required this.name,
+    required this.price,
+    this.inStock = true,
+    this.imageBase64 = '',
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'price': price,
+      'inStock': inStock,
+      'imageBase64': imageBase64,
+    };
+  }
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      name: json['name']?.toString() ?? '',
+      price: int.tryParse(json['price'].toString()) ?? 0,
+      inStock: json['inStock'] ?? true,
+      imageBase64: json['imageBase64']?.toString() ?? '',
+    );
+  }
+}
+
+class OrderData {
   final String customer;
   final String phone;
   final String address;
-  final String payment;
-  final int total;
   final String items;
+  final int total;
+  final String payment;
 
-  Order({
+  OrderData({
     required this.customer,
     required this.phone,
     required this.address,
-    required this.payment,
-    required this.total,
     required this.items,
+    required this.total,
+    required this.payment,
   });
 
-  Map<String, dynamic> toJson() => {
-        'customer': customer,
-        'phone': phone,
-        'address': address,
-        'payment': payment,
-        'total': total,
-        'items': items,
-      };
+  Map<String, dynamic> toJson() {
+    return {
+      'customer': customer,
+      'phone': phone,
+      'address': address,
+      'items': items,
+      'total': total,
+      'payment': payment,
+    };
+  }
 
-  factory Order.fromJson(Map<String, dynamic> j) => Order(
-        customer: j['customer'] ?? '',
-        phone: j['phone'] ?? '',
-        address: j['address'] ?? '',
-        payment: j['payment'] ?? 'Cash on Delivery',
-        total: int.tryParse('${j['total'] ?? 0}') ?? 0,
-        items: j['items'] ?? '',
-      );
+  factory OrderData.fromJson(Map<String, dynamic> json) {
+    return OrderData(
+      customer: json['customer']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      address: json['address']?.toString() ?? '',
+      items: json['items']?.toString() ?? '',
+      total: int.tryParse(json['total'].toString()) ?? 0,
+      payment: json['payment']?.toString() ?? '',
+    );
+  }
 }
 
 class FnsApp extends StatefulWidget {
@@ -86,28 +89,38 @@ class FnsApp extends StatefulWidget {
 }
 
 class _FnsAppState extends State<FnsApp> {
-  final List<Product> products = [
-    Product('1', 'Hydryllin Syrup 120ml', 200, 'Syrup'),
-    Product('2', 'Pulmonol Syrup 120ml', 200, 'Syrup'),
-    Product('3', 'Lederplex Syrup 150ml', 234, 'Syrup'),
-    Product('4', 'Extor 5/80 Tablet', 490, 'Tablet'),
-    Product('5', 'Risek 40mg Capsule', 861, 'Capsule'),
+  static const String whatsappNumber = '923343738405';
+
+  List<Product> products = [
+    Product(
+      name: 'Hydryllin Syrup 120ml',
+      price: 200,
+    ),
+    Product(
+      name: 'Pulmonol Syrup 120ml',
+      price: 200,
+    ),
+    Product(
+      name: 'Lederplex Syrup 150ml',
+      price: 234,
+    ),
+    Product(
+      name: 'Extor 5/80 Tablet',
+      price: 490,
+    ),
+    Product(
+      name: 'Risek 40mg Capsule',
+      price: 861,
+    ),
   ];
 
   final Map<Product, int> cart = {};
-  final List<Order> orders = [];
-  final Set<Product> favorites = {};
+  final Set<String> favorites = {};
+  final List<OrderData> orders = [];
 
-  String search = '';
-  String selectedCategory = 'All';
+  String searchText = '';
   int bottomIndex = 0;
   bool loading = true;
-
-  int get total =>
-      cart.entries.fold(0, (sum, e) => sum + e.key.price * e.value);
-
-  int get cartCount =>
-      cart.values.fold(0, (sum, quantity) => sum + quantity);
 
   @override
   void initState() {
@@ -118,35 +131,42 @@ class _FnsAppState extends State<FnsApp> {
   Future<void> loadSavedData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final savedProducts = prefs.getString('fns_products');
-    final savedOrders = prefs.getString('fns_orders');
+    final savedProducts = prefs.getString('products');
+    final savedFavorites = prefs.getStringList('favorites');
+    final savedOrders = prefs.getString('orders');
 
-    if (savedProducts != null) {
-      final list = jsonDecode(savedProducts) as List;
-
-      products
-        ..clear()
-        ..addAll(
-          list.map(
-            (e) => Product.fromJson(
-              Map<String, dynamic>.from(e),
-            ),
-          ),
-        );
+    if (savedProducts != null && savedProducts.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(savedProducts) as List;
+        products = decoded
+            .map(
+              (item) => Product.fromJson(
+                Map<String, dynamic>.from(item),
+              ),
+            )
+            .toList();
+      } catch (_) {}
     }
 
-    if (savedOrders != null) {
-      final list = jsonDecode(savedOrders) as List;
-
-      orders
+    if (savedFavorites != null) {
+      favorites
         ..clear()
-        ..addAll(
-          list.map(
-            (e) => Order.fromJson(
-              Map<String, dynamic>.from(e),
+        ..addAll(savedFavorites);
+    }
+
+    if (savedOrders != null && savedOrders.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(savedOrders) as List;
+        orders
+          ..clear()
+          ..addAll(
+            decoded.map(
+              (item) => OrderData.fromJson(
+                Map<String, dynamic>.from(item),
+              ),
             ),
-          ),
-        );
+          );
+      } catch (_) {}
     }
 
     if (mounted) {
@@ -160,10 +180,18 @@ class _FnsAppState extends State<FnsApp> {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setString(
-      'fns_products',
+      'products',
       jsonEncode(
-        products.map((p) => p.toJson()).toList(),
+        products.map((product) => product.toJson()).toList(),
       ),
+    );
+  }
+
+  Future<void> saveFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      'favorites',
+      favorites.toList(),
     );
   }
 
@@ -171,24 +199,55 @@ class _FnsAppState extends State<FnsApp> {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setString(
-      'fns_orders',
+      'orders',
       jsonEncode(
-        orders.map((o) => o.toJson()).toList(),
+        orders.map((order) => order.toJson()).toList(),
       ),
     );
   }
 
+  int get cartCount {
+    int count = 0;
+
+    for (final quantity in cart.values) {
+      count += quantity;
+    }
+
+    return count;
+  }
+
+  int get cartTotal {
+    int total = 0;
+
+    for (final entry in cart.entries) {
+      total += entry.key.price * entry.value;
+    }
+
+    return total;
+  }
+
+  List<Product> get filteredProducts {
+    if (searchText.trim().isEmpty) {
+      return products;
+    }
+
+    final query = searchText.toLowerCase();
+
+    return products.where((product) {
+      return product.name.toLowerCase().contains(query);
+    }).toList();
+  }
+
   Widget productImage(
     Product product, {
-    double size = 65,
+    double size = 70,
   }) {
-    if (product.imageBase64 != null &&
-        product.imageBase64!.isNotEmpty) {
+    if (product.imageBase64.isNotEmpty) {
       try {
         return ClipRRect(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           child: Image.memory(
-            base64Decode(product.imageBase64!),
+            base64Decode(product.imageBase64),
             width: size,
             height: size,
             fit: BoxFit.cover,
@@ -201,21 +260,21 @@ class _FnsAppState extends State<FnsApp> {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         color: Colors.grey.shade200,
       ),
-      child: Icon(
-        product.stock ? Icons.medication : Icons.block,
-        size: size * .5,
+      child: const Icon(
+        Icons.shopping_bag,
+        size: 35,
       ),
     );
   }
 
   void addToCart(Product product) {
-    if (!product.stock) {
+    if (!product.inStock) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('This product is out of stock'),
+          content: Text('This product is currently out of stock.'),
         ),
       );
       return;
@@ -224,39 +283,42 @@ class _FnsAppState extends State<FnsApp> {
     setState(() {
       cart[product] = (cart[product] ?? 0) + 1;
     });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${product.name} added to cart'),
+      ),
+    );
   }
 
-  void removeFromCart(Product product) {
+  void increaseQuantity(Product product) {
     setState(() {
-      if ((cart[product] ?? 0) > 1) {
-        cart[product] = cart[product]! - 1;
-      } else {
+      cart[product] = (cart[product] ?? 0) + 1;
+    });
+  }
+
+  void decreaseQuantity(Product product) {
+    setState(() {
+      final quantity = cart[product] ?? 0;
+
+      if (quantity <= 1) {
         cart.remove(product);
+      } else {
+        cart[product] = quantity - 1;
       }
     });
   }
 
   void toggleFavorite(Product product) {
     setState(() {
-      if (favorites.contains(product)) {
-        favorites.remove(product);
+      if (favorites.contains(product.name)) {
+        favorites.remove(product.name);
       } else {
-        favorites.add(product);
+        favorites.add(product.name);
       }
     });
-  }
 
-  Future<void> openWhatsApp(String message) async {
-    final encoded = Uri.encodeComponent(message);
-
-    final uri = Uri.parse(
-      'https://wa.me/923343738405?text=$encoded',
-    );
-
-    await launchUrl(
-      uri,
-      mode: LaunchMode.externalApplication,
-    );
+    saveFavorites();
   }
 
   void showProductDetails(Product product) {
@@ -264,51 +326,160 @@ class _FnsAppState extends State<FnsApp> {
       context: context,
       isScrollControlled: true,
       builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              productImage(product, size: 150),
-              const SizedBox(height: 15),
-              Text(
-                product.name,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                productImage(
+                  product,
+                  size: 120,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text('Category: ${product.category}'),
-              const SizedBox(height: 8),
-              Text(
-                'Retail Price: Rs. ${product.price}',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 15),
+                Text(
+                  product.name,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                product.stock ? 'In Stock' : 'Out of Stock',
-              ),
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: product.stock
-                    ? () {
-                        addToCart(product);
-                        Navigator.pop(context);
-                      }
-                    : null,
-                icon: const Icon(Icons.shopping_cart),
-                label: const Text('Add to Cart'),
-              ),
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 8),
+                Text(
+                  'Retail: Rs. ${product.price}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  product.inStock ? 'In Stock' : 'Out of Stock',
+                  style: TextStyle(
+                    color: product.inStock
+                        ? Colors.green
+                        : Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: product.inStock
+                        ? () {
+                            Navigator.pop(context);
+                            addToCart(product);
+                          }
+                        : null,
+                    icon: const Icon(Icons.shopping_cart),
+                    label: const Text('Add to Cart'),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  Widget homePage() {
+    final visibleProducts = filteredProducts;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: TextField(
+            onChanged: (value) {
+              setState(() {
+                searchText = value;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Search products...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: searchText.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: () {
+                        setState(() {
+                          searchText = '';
+                        });
+                      },
+                      icon: const Icon(Icons.clear),
+                    ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: visibleProducts.isEmpty
+              ? const Center(
+                  child: Text('No products found'),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(
+                    12,
+                    0,
+                    12,
+                    20,
+                  ),
+                  itemCount: visibleProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = visibleProducts[index];
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(10),
+                        leading: productImage(product),
+                        title: Text(
+                          product.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            'Retail: Rs. ${product.price}\n'
+                            '${product.inStock ? 'In Stock' : 'Out of Stock'}',
+                            style: TextStyle(
+                              color: product.inStock
+                                  ? Colors.green
+                                  : Colors.red,
+                            ),
+                          ),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment:
+                              MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              onPressed: () =>
+                                  toggleFavorite(product),
+                              icon: Icon(
+                                favorites.contains(product.name)
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: favorites.contains(product.name)
+                                    ? Colors.red
+                                    : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                        onTap: () => showProductDetails(product),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
@@ -318,60 +489,89 @@ class _FnsAppState extends State<FnsApp> {
       isScrollControlled: true,
       builder: (_) {
         return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Padding(
-              padding: const EdgeInsets.all(16),
+          builder: (sheetContext, setSheetState) {
+            return SafeArea(
               child: SizedBox(
-                height: MediaQuery.of(context).size.height * .75,
+                height: MediaQuery.of(context).size.height * 0.85,
                 child: Column(
                   children: [
-                    const Text(
-                      'Shopping Cart',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                    Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Shopping Cart',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              Navigator.pop(sheetContext);
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 10),
                     Expanded(
                       child: cart.isEmpty
                           ? const Center(
-                              child: Text('Cart is empty'),
+                              child: Text('Your cart is empty'),
                             )
                           : ListView(
+                              padding:
+                                  const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                               children: cart.entries.map((entry) {
-                                final p = entry.key;
-                                final q = entry.value;
+                                final product = entry.key;
+                                final quantity = entry.value;
 
                                 return Card(
                                   child: ListTile(
                                     leading: productImage(
-                                      p,
+                                      product,
                                       size: 55,
                                     ),
-                                    title: Text(p.name),
-                                    subtitle:
-                                        Text('Rs. ${p.price} × $q'),
+                                    title: Text(product.name),
+                                    subtitle: Text(
+                                      'Rs. ${product.price} × $quantity',
+                                    ),
                                     trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
+                                      mainAxisSize:
+                                          MainAxisSize.min,
                                       children: [
                                         IconButton(
                                           onPressed: () {
-                                            removeFromCart(p);
+                                            decreaseQuantity(
+                                              product,
+                                            );
                                             setSheetState(() {});
                                           },
                                           icon: const Icon(
-                                            Icons.remove_circle_outline,
+                                            Icons.remove_circle,
                                           ),
                                         ),
-                                        Text('$q'),
+                                        Text(
+                                          '$quantity',
+                                          style: const TextStyle(
+                                            fontWeight:
+                                                FontWeight.bold,
+                                          ),
+                                        ),
                                         IconButton(
                                           onPressed: () {
-                                            addToCart(p);
+                                            increaseQuantity(
+                                              product,
+                                            );
                                             setSheetState(() {});
                                           },
                                           icon: const Icon(
-                                            Icons.add_circle_outline,
+                                            Icons.add_circle,
                                           ),
                                         ),
                                       ],
@@ -381,26 +581,47 @@ class _FnsAppState extends State<FnsApp> {
                               }).toList(),
                             ),
                     ),
-                    const Divider(),
-                    Text(
-                      'Total: Rs. $total',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: cart.isEmpty
-                            ? null
-                            : () {
-                                Navigator.pop(context);
-                                showCheckout();
-                              },
-                        icon: const Icon(Icons.receipt_long),
-                        label: const Text('Checkout'),
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Total',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                'Rs. $cartTotal',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: cart.isEmpty
+                                  ? null
+                                  : () {
+                                      Navigator.pop(sheetContext);
+                                      showCheckout();
+                                    },
+                              icon: const Icon(
+                                Icons.shopping_cart_checkout,
+                              ),
+                              label: const Text('Checkout'),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -414,492 +635,38 @@ class _FnsAppState extends State<FnsApp> {
   }
 
   void showCheckout() {
-    final name = TextEditingController();
-    final phone = TextEditingController();
-    final address = TextEditingController();
+    if (cart.isEmpty) {
+      return;
+    }
 
-    String payment = 'Cash on Delivery';
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    final addressController = TextEditingController();
 
-    showDialog(
+    String paymentMethod = 'Cash on Delivery';
+
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (_) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Checkout'),
-              content: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: name,
-                      decoration: const InputDecoration(
-                        labelText: 'Customer Name',
-                        prefixIcon: Icon(Icons.person),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: phone,
-                      keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                        labelText: 'Mobile Number',
-                        prefixIcon: Icon(Icons.phone),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: address,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Delivery Address',
-                        prefixIcon: Icon(Icons.location_on),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    DropdownButtonFormField<String>(
-                      initialValue: payment,
-                      decoration: const InputDecoration(
-                        labelText: 'Payment Method',
-                        prefixIcon: Icon(Icons.payment),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'Cash on Delivery',
-                          child: Text('Cash on Delivery'),
-                        ),
-                      ],
-                      onChanged: (v) {
-                        setDialogState(() {
-                          payment = v ?? payment;
-                        });
-                      },
-                    ),
-                  ],
+          builder: (sheetContext, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom:
+                      MediaQuery.of(context).viewInsets.bottom +
+                          20,
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () async {
-                    if (name.text.trim().isEmpty ||
-                        phone.text.trim().isEmpty ||
-                        address.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please fill all details'),
-                        ),
-                      );
-                      return;
-                    }
-
-                    final items = cart.entries
-                        .map(
-                          (e) =>
-                              '${e.key.name} × ${e.value} = Rs. ${e.key.price * e.value}',
-                        )
-                        .join('\n');
-
-                    final order = Order(
-                      customer: name.text.trim(),
-                      phone: phone.text.trim(),
-                      address: address.text.trim(),
-                      payment: payment,
-                      total: total,
-                      items: items,
-                    );
-
-                    setState(() {
-                      orders.add(order);
-                    });
-
-                    await saveOrders();
-
-                    final message = '''
-FNS TRADER'S ORDER
-
-Customer: ${order.customer}
-Mobile: ${order.phone}
-
-Items:
-${order.items}
-
-Total: Rs. ${order.total}
-
-Payment: ${order.payment}
-
-Delivery Address:
-${order.address}
-''';
-
-                    setState(() {
-                      cart.clear();
-                    });
-
-                    Navigator.pop(context);
-
-                    await openWhatsApp(message);
-
-                    if (mounted) {
-                      ScaffoldMessenger.of(this.context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Order details sent to WhatsApp',
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text('Place Order'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  List<String> get categories {
-    final list = products
-        .map((p) => p.category)
-        .where((x) => x.trim().isNotEmpty)
-        .toSet()
-        .toList();
-
-    return ['All', ...list];
-  }
-
-  List<Product> get shownProducts {
-    return products.where((product) {
-      final searchMatch = product.name
-          .toLowerCase()
-          .contains(search.toLowerCase());
-
-      final categoryMatch =
-          selectedCategory == 'All' ||
-          product.category == selectedCategory;
-
-      return searchMatch && categoryMatch;
-    }).toList();
-  }
-void showAdminLogin(BuildContext dialogContext) {
-  final password = TextEditingController();
-
-  showDialog(
-    context: dialogContext,
-    builder: (_) {
-      return AlertDialog(
-        title: const Text('Admin Login'),
-        content: TextField(
-          controller: password,
-          obscureText: true,
-          decoration: const InputDecoration(
-            labelText: 'Admin Password',
-            prefixIcon: Icon(Icons.lock),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (password.text == '1234') {
-                Navigator.pop(dialogContext);
-                showAdminPanel(dialogContext);
-              } else {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(
-                    content: Text('Wrong password'),
-                  ),
-                );
-              }
-            },
-            child: const Text('Login'),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-void showAdminPanel(BuildContext dialogContext) {
-void showAdminPanel(BuildContext dialogContext) {
-  showModalBottomSheet(
-    context: dialogContext,
-    isScrollControlled: true,
-    builder: (_) {
-      return SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Admin Panel',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Product management will be added here.',
-                style: TextStyle(fontSize: 16),
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-  Widget homePage() {
-    return Column(
-      children: [
-        const SizedBox(height: 10),
-        Image.asset(
-          'fns_logo.png',
-          height: 105,
-        ),
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: TextField(
-            decoration: const InputDecoration(
-              labelText: 'Search products',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (v) {
-              setState(() {
-                search = v;
-              });
-            },
-          ),
-        ),
-        SizedBox(
-          height: 45,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            children: categories.map((category) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(category),
-                  selected: selectedCategory == category,
-                  onSelected: (_) {
-                    setState(() {
-                      selectedCategory = category;
-                    });
-                  },
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 8),
-                Expanded(
-          child: shownProducts.isEmpty
-              ? const Center(
-                  child: Text('No products found'),
-                )
-              : ListView.builder(
-                  itemCount: shownProducts.length,
-                  itemBuilder: (_, index) {
-                    final p = shownProducts[index];
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      child: ListTile(
-                        onTap: () => showProductDetails(p),
-                        leading: productImage(p, size: 60),
-                        title: Text(
-                          p.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${p.category}\nRetail: Rs. ${p.price}${p.stock ? '' : '\nOut of Stock'}',
-                        ),
-                        isThreeLine: true,
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                              onPressed: () => toggleFavorite(p),
-                              icon: Icon(
-                                favorites.contains(p)
-                             ? Icons.favorite
-                              : Icons.favorite_border,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-    @override
-  Widget build(BuildContext context) {
-    Widget page;
-
-    if (bottomIndex == 0) {
-      page = homePage();
-    } else if (bottomIndex == 1) {
-      page = favorites.isEmpty
-          ? const Center(
-              child: Text('No favorite products'),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(12),
-              children: favorites.map((p) {
-                return Card(
-                  child: ListTile(
-                    leading: productImage(p, size: 55),
-                    title: Text(p.name),
-                    subtitle: Text('Retail: Rs. ${p.price}'),
-                    trailing: IconButton(
-                      onPressed: () => toggleFavorite(p),
-                      icon: const Icon(Icons.favorite),
-                    ),
-                    onTap: () => showProductDetails(p),
-                  ),
-                );
-              }).toList(),
-            );
-    } else if (bottomIndex == 2) {
-      page = orders.isEmpty
-          ? const Center(
-              child: Text('No orders yet'),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(12),
-              children: orders.map((order) {
-                return Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.receipt_long),
-                    title: Text(order.customer),
-                    subtitle: Text(
-                      '${order.items}\nTotal: Rs. ${order.total}\n'
-                      'Address: ${order.address}',
-                    ),
-                    isThreeLine: true,
-                  ),
-                );
-              }).toList(),
-            );
-    } else if (bottomIndex == 3) {
-      page = const Center(
-        child: Padding(
-          padding: EdgeInsets.all(25),
-          child: Text(
-            "FNS TRADER'S\n\n"
-            "BA FALAK NAZ & SON'S TRADER'S\n\n"
-            "Call / WhatsApp: 0334-3738405",
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      );
-    
-} else {
-  page = Builder(
-    builder: (adminContext) {
-      return Center(
-        child: FilledButton.icon(
-          onPressed: () => showAdminLogin(adminContext),
-          icon: const Icon(Icons.admin_panel_settings),
-          label: const Text('Open Admin Panel'),
-        ),
-      );
-    },
-  );
-}
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: "FNS TRADER'S",
-      home: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            bottomIndex == 0
-                ? "FNS TRADER'S"
-                : bottomIndex == 1
-                    ? 'Favorites'
-                    : bottomIndex == 2
-                        ? 'Orders'
-                        : bottomIndex == 3
-                            ? 'About'
-                            : 'Admin',
-          ),
-          actions: [
-            IconButton(
-              onPressed: showCart,
-              icon: Badge(
-                label: Text('$cartCount'),
-                isLabelVisible: cartCount > 0,
-                child: const Icon(Icons.shopping_cart),
-              ),
-            ),
-          ],
-        ),
-        body: loading
-            ? const Center(
-                child: CircularProgressIndicator(),
-              )
-            : page,
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: bottomIndex,
-          onDestinationSelected: (index) {
-            setState(() {
-              bottomIndex = index;
-            });
-          },
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
-              label: 'Home',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.favorite_border),
-              selectedIcon: Icon(Icons.favorite),
-              label: 'Favorites',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(Icons.receipt_long),
-              label: 'Orders',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.info_outline),
-              selectedIcon: Icon(Icons.info),
-              label: 'About',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.admin_panel_settings_outlined),
-              selectedIcon: Icon(Icons.admin_panel_settings),
-              label: 'Admin',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}                         
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Checkout',
+                        style: TextStyle(
+      
