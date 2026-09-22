@@ -61,7 +61,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         children: [
           _pages[_selectedIndex],
           
-          // Green WhatsApp Chat Button (Working Tap)
+          // Green WhatsApp Floating Chat Button
           Positioned(
             bottom: 16,
             right: 16,
@@ -116,7 +116,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   }
 }
 
-// ---------------- HOME TAB WITH SCROLLING MARQUEE ----------------
+// ---------------- HOME TAB ----------------
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
 
@@ -165,7 +165,7 @@ class _HomeTabState extends State<HomeTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Animated Continuous Scrolling Notice Bar
+          // Urdu Headline with "رحمۃ اللہ علیہ"
           Container(
             color: Colors.green[800],
             height: 36,
@@ -178,7 +178,7 @@ class _HomeTabState extends State<HomeTab> {
                 children: const [
                   SizedBox(width: 300),
                   Text(
-                    "• BABA FALAK NAZ & SON'S TRADER'S • بابا فلک ناز اینڈ سنز ٹریڈرز • WELCOME TO FNS TRADER'S • ",
+                    "• BABA FALAK NAZ & SON'S TRADER'S • بابا فلک ناز رحمۃ اللہ علیہ اینڈ سنز ٹریڈرز • WELCOME TO FNS TRADER'S • ",
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                   SizedBox(width: 300),
@@ -187,60 +187,30 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ),
 
-          // Top Header Card with Full Logo
+          // Top Header Card Containing ONLY the Full Banner Logo
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Card(
               elevation: 1,
               color: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
                 side: BorderSide(color: Colors.grey.shade200),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 100,
-                      height: 65,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.asset(
-                          'assets/images/logo.png',
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.store, size: 40, color: Colors.green),
-                        ),
-                      ),
+                padding: const EdgeInsets.all(8.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 90,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.store, size: 50, color: Colors.green),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "FNS TRADER'S",
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            "BA FALAK NAZ & SON'S TRADER'S",
-                            style: TextStyle(fontSize: 11, color: Colors.black87),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            "WhatsApp: 0334-3738405",
-                            style: TextStyle(fontSize: 11, color: Colors.black87),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -314,7 +284,7 @@ class _HomeTabState extends State<HomeTab> {
 
           const SizedBox(height: 12),
 
-          // Product List
+          // Product List Section
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
             child: Column(
@@ -382,7 +352,7 @@ class _HomeTabState extends State<HomeTab> {
   }
 }
 
-// ---------------- ABOUT TAB WITH FULL LOGO ----------------
+// ---------------- ABOUT TAB WITH FULL LOGO BANNER ----------------
 class AboutTab extends StatelessWidget {
   const AboutTab({super.key});
 
@@ -395,7 +365,7 @@ class AboutTab extends StatelessWidget {
         children: [
           const SizedBox(height: 20),
           
-          // Full Logo Display on About Screen
+          // Full Logo Banner Display on About Screen
           Container(
             height: 110,
             width: double.infinity,
@@ -404,8 +374,9 @@ class AboutTab extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey.shade200),
             ),
+            padding: const EdgeInsets.all(8.0),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               child: Image.asset(
                 'assets/images/logo.png',
                 fit: BoxFit.contain,
