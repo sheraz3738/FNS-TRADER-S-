@@ -61,7 +61,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         children: [
           _pages[_selectedIndex],
           
-          // Green WhatsApp Floating Chat Button
+          // Green WhatsApp Chat Button
           Positioned(
             bottom: 16,
             right: 16,
@@ -127,6 +127,7 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> {
   late ScrollController _scrollController;
   Timer? _timer;
+  String _selectedCategory = "All";
 
   @override
   void initState() {
@@ -165,7 +166,7 @@ class _HomeTabState extends State<HomeTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Urdu Headline with "رحمۃ اللہ علیہ"
+          // Marquee Urdu Headline
           Container(
             color: Colors.green[800],
             height: 36,
@@ -187,7 +188,7 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ),
 
-          // Top Header Card Containing ONLY the Full Banner Logo
+          // Header Banner Card
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Card(
@@ -198,7 +199,7 @@ class _HomeTabState extends State<HomeTab> {
                 side: BorderSide(color: Colors.grey.shade200),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.all(6.0),
                 child: SizedBox(
                   width: double.infinity,
                   height: 90,
@@ -240,68 +241,64 @@ class _HomeTabState extends State<HomeTab> {
 
           const SizedBox(height: 12),
 
-          // Categories Filter Chips
+          // All Categories
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                FilterChip(
-                  label: const Text("✓ All"),
-                  selected: true,
-                  onSelected: (bool selected) {},
-                  selectedColor: Colors.green[100],
-                  backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  label: const Text("General"),
-                  selected: false,
-                  onSelected: (bool selected) {},
-                  backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  label: const Text("Surgical"),
-                  selected: false,
-                  onSelected: (bool selected) {},
-                  backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  label: const Text("Glucometer"),
-                  selected: false,
-                  onSelected: (bool selected) {},
-                  backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
+                _buildCategoryChip("All"),
+                _buildCategoryChip("General"),
+                _buildCategoryChip("Surgical"),
+                _buildCategoryChip("B.P Operator"),
+                _buildCategoryChip("Stethoscope"),
+                _buildCategoryChip("Glucometer"),
+                _buildCategoryChip("Other"),
               ],
             ),
           ),
 
           const SizedBox(height: 12),
 
-          // Product List Section
+          // Product List
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("5 product(s)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const Text("7 product(s)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 8),
                 _buildProductCard("Hydryllin Syrup 120ml", "General", "Rs. 200"),
                 _buildProductCard("Pulmonol Syrup 120ml", "General", "Rs. 200"),
                 _buildProductCard("Lederplex Syrup 150ml", "General", "Rs. 234"),
                 _buildProductCard("Extor 5/80 Tablet", "General", "Rs. 490"),
                 _buildProductCard("Risek 40mg Capsule", "General", "Rs. 861"),
+                _buildProductCard("Digital B.P Monitor", "B.P Operator", "Rs. 3500"),
+                _buildProductCard("Medical Stethoscope", "Stethoscope", "Rs. 1800"),
                 const SizedBox(height: 70),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryChip(String label) {
+    bool isSelected = _selectedCategory == label;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: FilterChip(
+        label: Text(isSelected ? "✓ $label" : label),
+        selected: isSelected,
+        onSelected: (bool selected) {
+          setState(() {
+            _selectedCategory = label;
+          });
+        },
+        selectedColor: Colors.green[100],
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -352,7 +349,7 @@ class _HomeTabState extends State<HomeTab> {
   }
 }
 
-// ---------------- ABOUT TAB WITH FULL LOGO BANNER ----------------
+// ---------------- ABOUT TAB ----------------
 class AboutTab extends StatelessWidget {
   const AboutTab({super.key});
 
@@ -365,7 +362,7 @@ class AboutTab extends StatelessWidget {
         children: [
           const SizedBox(height: 20),
           
-          // Full Logo Banner Display on About Screen
+          // Full Wide Banner Logo
           Container(
             height: 110,
             width: double.infinity,
