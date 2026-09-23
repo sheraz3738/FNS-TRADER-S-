@@ -32,28 +32,21 @@ jobs:
           cp -r temp_app/android .
           rm -rf temp_app
 
-      - name: Set final FNS Android identity
+      - name: FORCE FNS TRADERS name
         run: |
           python3 - <<'PY'
+          import re
           from pathlib import Path
           APP_NAME = "FNS TRADERS"
-          manifest = Path('android/app/src/main/AndroidManifest.xml')
-          if manifest.exists():
-              s = manifest.read_text()
-              s = s.replace('android:label="${appName}"', f'android:label="{APP_NAME}"')
-              s = s.replace('android:label="temp_app"', f'android:label="{APP_NAME}"')
-              s = s.replace('android:label="temp"', f'android:label="{APP_NAME}"')
-              manifest.write_text(s)
-          strings = Path('android/app/src/main/res/values/strings.xml')
-          if strings.exists():
-              s = strings.read_text().replace('temp_app', APP_NAME).replace('Temp-App', APP_NAME)
-              strings.write_text(s)
-          for p in [Path('android/app/build.gradle'), Path('android/app/build.gradle.kts')]:
-              if p.exists():
-                  t = p.read_text()
-                  t = t.replace('com.example.temp_app', 'com.fns.traders')
-                  t = t.replace('temp_app', 'fns_traders')
-                  p.write_text(t)
+          m = Path('android/app/src/main/AndroidManifest.xml')
+          txt = m.read_text()
+          txt = re.sub(r'android:label="[^"]+"', f'android:label="{APP_NAME}"', txt)
+          m.write_text(txt)
+          print("Manifest fixed:", txt[:500])
+          # also fix strings if exists
+          s = Path('android/app/src/main/res/values/strings.xml')
+          if s.exists():
+              s.write_text(f'<resources><string name="appName">{APP_NAME}</string></resources>')
           PY
 
       - name: Put FNS app code in lib
