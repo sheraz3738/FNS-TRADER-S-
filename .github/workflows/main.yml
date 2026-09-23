@@ -1,44 +1,18 @@
-name: Build FNS TRADER'S APK
-
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-
+name: Build APK
+on: workflow_dispatch
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.0'
-          channel: stable
-
-      - name: Create Android files
-        run: |
-          flutter create --platforms=android temp_app
-          cp -r temp_app/android .
-          rm -rf temp_app
-
-      - name: Put FNS app code in lib
-        run: |
-          mkdir -p lib
-          cp main.dart lib/main.dart
-
-      - name: Get dependencies
-        run: flutter pub get
-
-      - name: Build APK
-        run: flutter build apk --release
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+          flutter-version: '3.22.0'
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: softprops/action-gh-release@v1
         with:
-          name: FNS-TRADERS-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
+          tag_name: v1.0.${{ github.run_number }}
+          files: build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
