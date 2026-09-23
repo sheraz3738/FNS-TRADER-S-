@@ -1,4 +1,4 @@
-name: Build FNS TRADER'S APK
+name: Build FNS TRADERS APK
 
 on:
   workflow_dispatch:
@@ -8,11 +8,11 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -30,18 +30,21 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          
+          APP_NAME = "FNS TRADERS"
 
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           if manifest.exists():
               s = manifest.read_text()
-              s = s.replace('android:label="${appName}"', 'android:label="FNS TRADER\'S"')
-              s = s.replace('android:label="temp_app"', 'android:label="FNS TRADER\'S"')
-              s = s.replace('android:label="temp"', 'android:label="FNS TRADER\'S"')
+              s = s.replace('android:label="${appName}"', f'android:label="{APP_NAME}"')
+              s = s.replace('android:label="temp_app"', f'android:label="{APP_NAME}"')
+              s = s.replace('android:label="temp"', f'android:label="{APP_NAME}"')
               manifest.write_text(s)
 
           strings = Path('android/app/src/main/res/values/strings.xml')
           if strings.exists():
-              s = strings.read_text().replace('temp_app', 'FNS TRADER\'S').replace('Temp-App', 'FNS TRADER\'S')
+              s = strings.read_text()
+              s = s.replace('temp_app', APP_NAME).replace('Temp-App', APP_NAME)
               strings.write_text(s)
 
           for p in [Path('android/app/build.gradle'), Path('android/app/build.gradle.kts')]:
@@ -61,7 +64,7 @@ jobs:
         run: flutter pub get
 
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --no-shrink
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
