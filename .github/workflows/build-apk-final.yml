@@ -14,10 +14,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.0'
+          flutter-version: '3.24.5'
           channel: stable
 
       - name: Create Android files
@@ -30,9 +36,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          
           APP_NAME = "FNS TRADERS"
-
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           if manifest.exists():
               s = manifest.read_text()
@@ -40,13 +44,10 @@ jobs:
               s = s.replace('android:label="temp_app"', f'android:label="{APP_NAME}"')
               s = s.replace('android:label="temp"', f'android:label="{APP_NAME}"')
               manifest.write_text(s)
-
           strings = Path('android/app/src/main/res/values/strings.xml')
           if strings.exists():
-              s = strings.read_text()
-              s = s.replace('temp_app', APP_NAME).replace('Temp-App', APP_NAME)
+              s = strings.read_text().replace('temp_app', APP_NAME).replace('Temp-App', APP_NAME)
               strings.write_text(s)
-
           for p in [Path('android/app/build.gradle'), Path('android/app/build.gradle.kts')]:
               if p.exists():
                   t = p.read_text()
