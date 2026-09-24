@@ -21,28 +21,22 @@ jobs:
           flutter-version: '3.22.0'
           channel: 'stable'
 
-      - name: Fix Project Name to CAPITAL
+      - name: Build APK
         run: |
-          mv main.dart main_backup.dart || true
-          rm -f pubspec.yaml
-          flutter create --project-name fns_traders --org com.fnstraders.app --platforms=android . --overwrite
-          mv main_backup.dart lib/main.dart || true
+          if [ ! -d "android" ]; then
+            flutter create --project-name fns_traders --org com.fnstraders.app --platforms=android . --overwrite
+          fi
+          cp main.dart lib/main.dart
           flutter pub get
           sed -i "s/android:label=\".*\"/android:label=\"FNS TRADER'S\"/g" android/app/src/main/AndroidManifest.xml
-          mkdir -p android/app/src/main/res/values
           echo '<resources><string name="app_name">FNS TRADER'"'"'S</string></resources>' > android/app/src/main/res/values/strings.xml
+          flutter build apk --release
 
-      - name: Build APK
-        run: flutter build apk --release
-
-      - name: Rename APK
-        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/FNS-TRADERS.apk
-
-      - name: Release Direct APK
+      - name: Release APK
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: FNS TRADER'S v1.0.${{ github.run_number }}
-          files: build/app/outputs/flutter-apk/FNS-TRADERS.apk
+          files: build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
