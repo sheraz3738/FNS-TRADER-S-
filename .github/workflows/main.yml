@@ -1,5 +1,8 @@
 name: Build FNS TRADERS APK
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
 jobs:
   build:
     runs-on: ubuntu-latest
