@@ -1,8 +1,5 @@
 name: Build FNS TRADERS APK
-on:
-  workflow_dispatch:
-  push:
-    branches: [ main ]
+on: workflow_dispatch
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,9 +9,8 @@ jobs:
         with:
           channel: 'stable'
       - run: flutter pub get
-      - run: flutter build apk --release
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v1
+      - run: flutter build apk --release --target=main.dart
+      - uses: softprops/action-gh-release@v1
         with:
           tag_name: v1.0.${{ github.run_number }}
           files: build/app/outputs/flutter-apk/app-release.apk
