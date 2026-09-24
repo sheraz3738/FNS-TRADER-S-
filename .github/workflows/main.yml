@@ -11,8 +11,13 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-      - run: flutter pub get
-      - run: flutter build apk --release --target=main.dart
+      - name: Fix project structure
+        run: |
+          flutter create . --project-name fns_traders --org com.fns.traders --platforms=android
+          mkdir -p lib
+          if [ -f "main.dart" ]; then cp main.dart lib/main.dart; fi
+          flutter pub get
+      - run: flutter build apk --release
       - uses: softprops/action-gh-release@v1
         with:
           tag_name: v1.0.${{ github.run_number }}
