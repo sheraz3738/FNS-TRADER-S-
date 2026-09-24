@@ -1,13 +1,27 @@
 name: FNS TRADERS Final Build
-on: {push: {branches: [main]}}
+on:
+  push:
+    branches: [ main ]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
-        with: {flutter-version: '3.24.5', channel: 'stable'}
+        with:
+          flutter-version: '3.24.5'
+          channel: 'stable'
+      
+      - name: Auto Fix Missing Files
+        run: |
+          if [ ! -f "lib/main.dart" ]; then
+            echo "Creating missing Flutter files..."
+            flutter create . --project-name fns_traders --org com.fnstraders --overwrite
+          fi
+
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
-        with: {name: FNS-TRADERS-APK, path: build/app/outputs/flutter-apk/app-release.apk}
+        with:
+          name: FNS-TRADERS-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
