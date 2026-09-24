@@ -1,26 +1,21 @@
 name: fns_traders
-description: FNS TRADER'S shopping app
-publish_to: "none"
+description: FNS Traders App
+publish_to: 'none'
 version: 1.0.0+1
-
 environment:
-  sdk: ">=3.5.0 <4.0.0"
-
+  sdk: '>=3.0.0 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter
-  url_launcher: ^6.3.2
-  shared_preferences: ^2.5.3
-  image_picker: ^1.1.2
-  pdf: ^3.11.3
-  printing: ^5.14.2
-
+  cupertino_icons: ^1.0.8
+  image_picker: ^1.0.7
+  pdf: ^3.10.7
+  printing: ^5.11.1
+  shared_preferences: ^2.2.2
+  url_launcher: ^6.2.4
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
-
+  flutter_lints: ^3.0.0
 flutter:
   uses-material-design: true
-  assets:
-    - fns_logo.png
