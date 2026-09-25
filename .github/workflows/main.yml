@@ -11,11 +11,10 @@ jobs:
         with:
           flutter-version: '3.24.5'
           channel: 'stable'
-      - name: Create Android Folder
+      - name: Fix Android Folder
         run: |
-          if [! -d "android" ]; then
-            flutter create. --platforms=android --org com.fnstraders --project-name fns_traders --no-overwrite
-          fi
+          rm -rf android
+          flutter create . --platforms=android --org com.fnstraders --project-name fns_traders
       - run: flutter pub get
       - run: flutter build apk --release
       - name: Upload Final APK
