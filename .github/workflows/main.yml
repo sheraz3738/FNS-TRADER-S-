@@ -8,10 +8,9 @@ jobs:
       - name: Fix Android folder name
         run: |
           if [ -d "Android" ]; then mv Android android; fi
-          ls -la
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.27.1'
       - run: flutter clean
       - run: flutter pub get
       - run: flutter build apk --release
