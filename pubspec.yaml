@@ -1,17 +1,27 @@
 name: fns_traders
-description: FNS TRADERS Quality Medicines
+description: BABA FALAK NAZ & SONS TRADERS - FNS TRADERS
 publish_to: 'none'
 version: 1.0.0+1
+
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: '>=3.0.0 <4.0.0'
+
 dependencies:
   flutter:
     sdk: flutter
-  image_picker: ^1.0.7
-  pdf: ^3.11.0
-  printing: ^5.11.1
-  shared_preferences: ^2.2.2
-  url_launcher: ^6.2.5
+  cupertino_icons: ^1.0.8
+  image_picker: ^1.1.2
+  shared_preferences: ^2.3.3
+  pdf: ^3.11.1
+  printing: ^5.13.2
+  url_launcher: ^6.2.6
+  path_provider: ^2.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
 flutter:
   uses-material-design: true
   assets:
