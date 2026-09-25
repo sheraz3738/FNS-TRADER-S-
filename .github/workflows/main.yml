@@ -1,4 +1,4 @@
-name: FNS TRADERS Final Build
+name: FNS TRADERS APK Build
 on:
   push:
     branches: [ main ]
@@ -11,16 +11,15 @@ jobs:
         with:
           flutter-version: '3.24.5'
           channel: 'stable'
-      
-      - name: Fix Android Folder
+      - name: Create Android Folder
         run: |
-          if [ ! -d "android" ]; then
-            flutter create . --platforms=android --org com.fnstraders --project-name fns_traders --no-overwrite
+          if [! -d "android" ]; then
+            flutter create. --platforms=android --org com.fnstraders --project-name fns_traders --no-overwrite
           fi
-
       - run: flutter pub get
       - run: flutter build apk --release
-      - uses: actions/upload-artifact@v4
+      - name: Upload Final APK
+        uses: actions/upload-artifact@v4
         with:
           name: FNS-TRADERS-APK
           path: build/app/outputs/flutter-apk/app-release.apk
