@@ -1,46 +1,21 @@
 name: Build APK
-
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
-
+on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-          
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.3'
-          channel: 'stable'
-          
-      - name: Fix Android v1 Embedding
+      - name: Fix Android folder name
         run: |
-          # Purana android folder backup aur naya banana
-          rm -rf android
-          flutter create . --platforms=android --project-name fns_traders
-          # SDK 35 set karo
-          echo "flutter.compileSdkVersion=35" >> android/local.properties
-          echo "flutter.targetSdkVersion=35" >> android/local.properties
-          echo "flutter.minSdkVersion=21" >> android/local.properties
-          
-      - name: Get dependencies
-        run: flutter pub get
-        
-      - name: Build APK Release
-        run: flutter build apk --release
-        
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+          if [ -d "Android" ]; then mv Android android; fi
+          ls -la
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+      - run: flutter clean
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
         with:
           name: FNS-TRADERS-APK
           path: build/app/outputs/flutter-apk/app-release.apk
