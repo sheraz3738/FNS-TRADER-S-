@@ -13,9 +13,9 @@ jobs:
         with:
           flutter-version: '3.24.5'
       - run: rm -rf Android android
-      - run: sed -i "s/^name:.*/name: fns_trader_s_/" pubspec.yaml
-      - run: sed -i "/marquee/d" pubspec.yaml || true
-      - run: sed -i "s/flutter_blue_plus:.*/flutter_blue_plus: ^1.35.5/" pubspec.yaml || true
+      - run: sed -i 's/^name:.*/name: fns_trader_s_/' pubspec.yaml
+      - run: sed -i '/marquee/d' pubspec.yaml || true
+      - run: sed -i 's/flutter_blue_plus:.*/flutter_blue_plus: ^1.35.5/' pubspec.yaml || true
       - run: flutter create . --project-name fns_trader_s_ --platforms=android
       - run: flutter clean
       - run: flutter pub upgrade
