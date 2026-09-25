@@ -14,12 +14,11 @@ jobs:
           flutter-version: '3.22.3'
       - run: cp lib/main.dart /tmp/main.dart
       - run: rm -rf Android android
-      - run: sed -i 's/flutter_blue_plus:.*/flutter_blue_plus: ^1.31.15/' pubspec.yaml
       - run: flutter create . --project-name fns_trader_s_ --platforms=android
-      - run: cp /tmp/main.dflutter-version: '3.22.3'art lib/main.dart
+      - run: cp /tmp/main.dart lib/main.dart
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
-          name: FNS-TRADERS-APK
+          name: APK
           path: build/app/outputs/flutter-apk/app-release.apk
