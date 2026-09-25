@@ -5,27 +5,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Delete Old Android Folder
+      - name: Fix Old Folders
         run: |
-          if [ -d "Android" ]; then rm -rf Android; fi
-          rm -rf android
-
+          rm -rf Android android
+          sed -i "/marquee/d" pubspec.yaml || true
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
-
-      - name: Create New Android Folder
+      - name: Recreate Android
         run: flutter create. --platforms=android
-
-      - name: Fix Marquee and Build
+      - name: Build
         run: |
-          sed -i "/marquee/d" pubspec.yaml
-          find lib -type f -name "*.dart" -exec sed -i "s/import 'package:marquee.*//g" {} \;
-          find lib -type f -name "*.dart" -exec sed -i "s/Marquee(/Text(/g" {} \;
           flutter pub get
           flutter build apk --release
-
       - uses: actions/upload-artifact@v4
         with:
           name: FNS-TRADERS-APK
