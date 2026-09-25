@@ -153,27 +153,6 @@ class _FnsAppState extends State<FnsApp> {
     super.initState();
     _headlineController = ScrollController();
     loadSavedData();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startHeadlineScroll());
-  }
-
-  void _startHeadlineScroll() async {
-    await Future<void>.delayed(const Duration(milliseconds: 700));
-    while (mounted) {
-      if (!_headlineController.hasClients) {
-        await Future<void>.delayed(const Duration(milliseconds: 500));
-        continue;
-      }
-      final max = _headlineController.position.maxScrollExtent;
-      if (max <= 0) {
-        await Future<void>.delayed(const Duration(milliseconds: 500));
-        continue;
-      }
-      await _headlineController.animateTo(max, duration: const Duration(seconds: 12), curve: Curves.linear);
-      if (!mounted) return;
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      if (!mounted) return;
-      _headlineController.jumpTo(0);
-    }
   }
 
   @override
@@ -317,7 +296,6 @@ class _FnsAppState extends State<FnsApp> {
             child: Image.asset('fns_logo.png', width: double.infinity, height: 145, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.store, size: 80)),
           ),
           const SizedBox(height: 10),
-          // YAHAN CHANGE KIYA HAI - Welcome ki jagah AYAT
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -343,10 +321,13 @@ class _FnsAppState extends State<FnsApp> {
   }
 
   Widget _categoryChip(String category) => Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(label: Text(category), selected: selectedCategory == category, onSelected: (_) => setState(() => selectedCategory = category)));
+
   Widget _productCard(Product product) => Card(margin: const EdgeInsets.only(bottom: 10), child: ListTile(contentPadding: const EdgeInsets.all(10), leading: productImage(product, size: 58), title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text('${product.category}\nRetail: Rs. ${product.price}'), isThreeLine: true, onTap: () => showProductDetails(product), trailing: SizedBox(width: 48, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [IconButton(padding: EdgeInsets.zero, onPressed: () => toggleFavorite(product), icon: Icon(favorites.contains(product.name)? Icons.favorite : Icons.favorite_border)), IconButton(padding: EdgeInsets.zero, onPressed: product.inStock? () => addToCart(product) : null, icon: const Icon(Icons.add_shopping_cart))]))));
 
-  Widget cartFullPage() => Scaffold(appBar: AppBar(title: Text('Cart (${cartCount}) - Rs. $cartTotal'), backgroundColor: Colors.green), body: Column(children: [Expanded(child: cart.isEmpty? const Center(child: Text('Your cart is empty')) : ListView(padding: const EdgeInsets.all(12), children: cart.entries.map((entry) => Card(child: ListTile(leading: productImage(entry.key, size: 55), title: Text(entry.key.name), subtitle: Text('Rs. ${entry.key.price} × ${entry.value}'), trailing: Row(mainAxisSize: MainAxisSize.min, children: [IconButton(onPressed: () { decreaseQuantity(entry.key); }, icon: const Icon(Icons.remove_circle)), Text('${entry.value}', style: const TextStyle(fontWeight: FontWeight.bold)), IconButton(onPressed: () { increaseQuantity(entry.key); }, icon: const Icon(Icons.add_circle))])))).toList())), if (cart.isNotEmpty) Padding(padding: const EdgeInsets.all(12), child: Column(children: [Text('Total: Rs. $cartTotal', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)), const SizedBox(height: 10), SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => showCheckoutSheet(), child: const Text('Checkout')))]))]));
+  Widget cartFullPage() => Scaffold(appBar: AppBar(title: Text('Cart (${cartCount}) - Rs. $cartTotal'), backgroundColor: Colors.green), body: Column(children: [Expanded(child: cart.isEmpty? const Center(child: Text('Your cart is empty')) : ListView(padding: const EdgeInsets.all(12), children: cart.entries.map((entry) => Card(child: ListTile(leading: productImage(entry.key, size: 55), title: Text(entry.key.name), subtitle: Text('Rs. ${entry.key.price} x ${entry.value}'), trailing: Row(mainAxisSize: MainAxisSize.min, children: [IconButton(onPressed: () { decreaseQuantity(entry.key); }, icon: const Icon(Icons.remove_circle)), Text('${entry.value}', style: const TextStyle(fontWeight: FontWeight.bold)), IconButton(onPressed: () { increaseQuantity(entry.key); }, icon: const Icon(Icons.add_circle))])))).toList())), if (cart.isNotEmpty) Padding(padding: const EdgeInsets.all(12), child: Column(children: [Text('Total: Rs. $cartTotal', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)), const SizedBox(height: 10), SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => showCheckoutSheet(), child: const Text('Checkout')))]))]));
+
   Widget favFullPage() => Scaffold(appBar: AppBar(title: const Text('Favorites'), backgroundColor: Colors.green), body: favorites.isEmpty? const Center(child: Text('No favorites')) : ListView(children: products.where((p) => favorites.contains(p.name)).map((p) => ListTile(leading: productImage(p), title: Text(p.name), trailing: IconButton(icon: const Icon(Icons.delete), onPressed: () => toggleFavorite(p)))).toList()));
+
   Widget aboutFullPage() => Scaffold(appBar: AppBar(title: const Text('About'), backgroundColor: Colors.green), body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Image.asset('fns_logo.png', height: 120, errorBuilder: (_, __, ___) => const Icon(Icons.store, size: 80)), const SizedBox(height: 12), const Text('مَا شَاءَ اللَّهُ لَا قُوَّةَ إِلَّا بِاللَّهِ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 6), const Text('BABA FALAK NAZ & SON\'S TRADERS', style: TextStyle(fontWeight: FontWeight.bold)), const Text('FNS TRADERS'), ElevatedButton(onPressed: () => _openWhatsApp(), child: const Text('WhatsApp: 0334-3738405'))])));
 
   Widget adminLoginPage() {
@@ -363,7 +344,7 @@ class _FnsAppState extends State<FnsApp> {
         final order = OrderData(orderNo: orderNo, dateTime: DateTime.now().toString().substring(0, 16), customer: nameC.text, phone: phoneC.text, address: addrC.text, items: itemsStr, total: cartTotal, payment: 'Cash');
         orders.add(order); await saveOrders();
         final pdf = pw.Document();
-        pdf.addPage(pw.Page(build: (c) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [pw.Text('FNS TRADERS - Invoice', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)), pw.Text('مَا شَاءَ اللَّهُ لَا قُوَّةَ إِلَّا بِاللَّهِ'), pw.SizedBox(height: 10), pw.Text('Order: $orderNo'), pw.Text('Customer: ${nameC.text}'), pw.Text('Phone: ${phoneC.text}'), pw.Text('Address: ${addrC.text}'), pw.Divider(),...cart.entries.map((e) => pw.Text('${e.key.name} x${e.value} = Rs. ${e.key.price * e.value}')), pw.Divider(), pw.Text('Total: Rs. $cartTotal', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))]))));
+        pdf.addPage(pw.Page(build: (c) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [pw.Text('FNS TRADERS - Invoice', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)), pw.Text('MASHALLAH LA QUWATA ILLA BILLAH'), pw.SizedBox(height: 10), pw.Text('Order: $orderNo'), pw.Text('Customer: ${nameC.text}'), pw.Text('Phone: ${phoneC.text}'), pw.Text('Address: ${addrC.text}'), pw.Divider(),...cart.entries.map((e) => pw.Text('${e.key.name} x${e.value} = Rs. ${e.key.price * e.value}')), pw.Divider(), pw.Text('Total: Rs. $cartTotal', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))])));
         await Printing.layoutPdf(onLayout: (f) async => pdf.save());
         _openWhatsApp(message: 'New Order $orderNo\nCustomer: ${nameC.text}\nPhone: ${phoneC.text}\nAddress: ${addrC.text}\nItems: $itemsStr\nTotal: Rs. $cartTotal');
         setState(() => cart.clear()); Navigator.pop(ctx);
@@ -389,6 +370,6 @@ class _AdminPanelFullState extends State<AdminPanelFull> {
     const SizedBox(height: 8), SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () { if (_name.text.isEmpty) return; final p = Product(name: _name.text, price: int.tryParse(_price.text)?? 0, category: _cat.text, imageBase64: _img); final list = List<Product>.from(widget.products)..add(p); widget.onUpdate(list); _name.clear(); _price.clear(); setState(() => _img = ''); }, child: const Text('Add Stock'))),
     const Divider(height: 30), Text('Limit Fix - Current: Rs. ${widget.minLimit}'), Wrap(spacing: 6, children: [0, 500, 1000, 1500, 2000, 2500, 5000].map((v) => ChoiceChip(label: Text('Rs. $v'), selected: widget.minLimit == v, onSelected: (_) => widget.onLimitChange(v))).toList()),
     const Divider(height: 30), const Text('Stock ON/OFF & Delete', style: TextStyle(fontWeight: FontWeight.bold)),
-   ...widget.products.map((p) => Card(child: ListTile(leading: p.imageBase64.isNotEmpty? Image.memory(base64Decode(p.imageBase64), width: 40, height: 40, errorBuilder: (a, b, c) => const Icon(Icons.image)) : const Icon(Icons.medication), title: Text(p.name), subtitle: Text('Rs. ${p.price} - ${p.inStock? "In Stock" : "Out of Stock"}'), trailing: Row(mainAxisSize: MainAxisSize.min, children: [Switch(value: p.inStock, onChanged: (v) { setState(() => p.inStock = v); widget.onUpdate(widget.products); }), IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () { final list = List<Product>.from(widget.products)..remove(p); widget.onUpdate(list); })])))),
+  ...widget.products.map((p) => Card(child: ListTile(leading: p.imageBase64.isNotEmpty? Image.memory(base64Decode(p.imageBase64), width: 40, height: 40, errorBuilder: (a, b, c) => const Icon(Icons.image)) : const Icon(Icons.medication), title: Text(p.name), subtitle: Text('Rs. ${p.price} - ${p.inStock? "In Stock" : "Out of Stock"}'), trailing: Row(mainAxisSize: MainAxisSize.min, children: [Switch(value: p.inStock, onChanged: (v) { setState(() => p.inStock = v); widget.onUpdate(widget.products); }), IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () { final list = List<Product>.from(widget.products)..remove(p); widget.onUpdate(list); })])))),
   ])));
 }
