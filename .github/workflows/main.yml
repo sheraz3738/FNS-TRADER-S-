@@ -12,18 +12,14 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.3'
-      - name: Build Real App
-        run: |
-          cp lib/main.dart /tmp/main.dart
-          rm -rf Android android
-          sed -i 's/flutter_blue_plus:.*/flutter_blue_plus: ^1.31.15/' pubspec.yaml
-          sed -i '/marquee/d' pubspec.yaml || true
-          flutter create . --project-name fns_trader_s_ --platforms=android
-          cp /tmp/main.dart lib/main.dart
-          flutter clean- uses: actions/checkout@v4
-          flutter pub get
-          flutter build apk --release
+      - run: cp lib/main.dart /tmp/main.dart
+      - run: rm -rf Android android
+      - run: sed -i 's/flutter_blue_plus:.*/flutter_blue_plus: ^1.31.15/' pubspec.yaml
+      - run: flutter create . --project-name fns_trader_s_ --platforms=android
+      - run: cp /tmp/main.dflutter-version: '3.22.3'art lib/main.dart
+      - run: flutter pub get
+      - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
-          name: FNS-TRADERS-REAL-APK
+          name: FNS-TRADERS-APK
           path: build/app/outputs/flutter-apk/app-release.apk
