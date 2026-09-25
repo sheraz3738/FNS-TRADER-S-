@@ -21,12 +21,18 @@ class PrintService {
       build: (c) {
         return pw.Column(
           children: [
+            // 1. LOGO
             if (logoImage!= null) pw.Center(child: pw.Image(logoImage, width: 110, height: 110)),
-            pw.SizedBox(height: 8),
+            pw.SizedBox(height: 10),
+
+            // 2. LOGO K NECHY SIRF ENGLISH HEADLINE - URDU NHI
             pw.Center(child: pw.Text("BA BA FALAK NAZ & SON'S TRADER'S", style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold))),
+
+            pw.SizedBox(height: 4),
             pw.Center(child: pw.Text("Plot L 34, Sector 8/D K.I.A Karachi", style: pw.TextStyle(fontSize: 11))),
             pw.Center(child: pw.Text("Call / Whatsapp: 0334-3738405", style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold))),
             pw.Divider(thickness: 2),
+
             pw.Align(alignment: pw.Alignment.centerLeft, child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
               pw.Text("Order No: ${data['orderNo']}", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
               pw.Text("Date: ${data['date']}"),
@@ -34,21 +40,17 @@ class PrintService {
               pw.Text("Mobile: ${data['mobile']}"),
               pw.Text("Address: ${data['address']}"),
             ])),
-            pw.Spacer(),
 
+            pw.Spacer(),
             pw.Divider(thickness: 1),
             pw.SizedBox(height: 6),
             pw.Center(child: pw.Text("Please check your goods, quantity and expiry date before leaving the counter.", style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold))),
             pw.Center(child: pw.Text("No responsibility of supplier after goods leave the shop.", style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold))),
             pw.Center(child: pw.Text("Goods once sold will not be taken back or exchanged.", style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700))),
-
             pw.SizedBox(height: 14),
-            // --- YE AAP WALI NAYI LINE ---
             pw.Center(child: pw.Text("We Believe On Truth in Business", style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, fontStyle: pw.FontStyle.italic))),
-
             pw.SizedBox(height: 12),
             pw.Center(child: pw.Text("Thank You", style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold))),
-            pw.Center(child: pw.Text("Visit Again", style: pw.TextStyle(fontSize: 12))),
           ],
         );
       },
