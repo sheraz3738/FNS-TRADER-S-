@@ -12,9 +12,15 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.5'
-      - run: flutter create . --project-name fns_trader_s_ --platforms=android --overwrite
-      - run: flutter build apk --release
+      - name: Build Real App
+        run: |
+          cp lib/main.dart /tmp/main.dart
+          rm -rf Android android
+          flutter create . --project-name fns_trader_s_ --platforms=android
+          cp /tmp/main.dart lib/main.dart
+          flutter pub get
+          flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
-          name: FNS-TRADERS-APK
+          name: FNS-TRADERS-REAL-APK
           path: build/app/outputs/flutter-apk/app-release.apk
