@@ -13,7 +13,7 @@ jobs:
           rm -rf Android android
           sed -i "s/^name:.*/name: fns_trader_s_/" pubspec.yaml
           sed -i "/marquee/d" pubspec.yaml || true
-          flutter create. --project-name fns_trader_s_ --platforms=android
+          flutter create . --project-name fns_trader_s_ --platforms=android
           flutter pub get
           flutter build apk --release
       - uses: actions/upload-artifact@v4
