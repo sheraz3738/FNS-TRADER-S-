@@ -11,7 +11,7 @@ jobs:
       - run: |
           rm -rf Android android
           sed -i "/marquee/d" pubspec.yaml || true
-          flutter create. --platforms=android
+          flutter create . --platforms=android
           flutter pub get
           flutter build apk --release
       - uses: actions/upload-artifact@v4
