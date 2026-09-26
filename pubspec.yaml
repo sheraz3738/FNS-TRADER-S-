@@ -17,6 +17,8 @@ dependencies:
   path_provider: ^2.1.2
   shared_preferences: ^2.2.2
   qr: ^3.0.1
+  marquee: ^2.3.0
+  flutter_blue_plus: 1.32.12
 
 dev_dependencies:
   flutter_test:
