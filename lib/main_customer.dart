@@ -1,59 +1,179 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import 'dart:async';
 
-void main() => runApp(const FnsCustomerApp());
-
-class Product {
-  String name; int price; double discount; bool inStock; String imageBase64; String category;
-  Product({required this.name, required this.price, this.discount=0, this.inStock=true, this.imageBase64='', this.category='General'});
-  int get finalPrice => discount > 0? (price - (price * discount / 100)).round() : price;
-  Map<String, dynamic> toJson() => {'name':name,'price':price,'discount':discount,'inStock':inStock,'imageBase64':imageBase64,'category':category};
-  factory Product.fromJson(Map<String,dynamic> j) => Product(name:j['name']??'', price:int.tryParse(j['price'].toString())??0, discount:double.tryParse(j['discount'].toString())??0, inStock:j['inStock']??true, imageBase64:j['imageBase64']??'', category:j['category']??'General');
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(FNSCustomer());
 }
 
-class FnsCustomerApp extends StatefulWidget { const FnsCustomerApp({super.key}); @override State<FnsCustomerApp> createState()=>_FnsCustomerAppState(); }
+class FNSCustomer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: LoginScreen(),
+    );
+  }
+}
 
-class _FnsCustomerAppState extends State<FnsCustomerApp> {
-  static const String whatsappNumber = '923343738405';
-  static const String shopAddress = 'Plot No, L34 Street No, 02 Sector 8/D K.I.A Karachi';
-  static const String shopMobile = '0334-3738405';
-  List<Product> products = [];
-  final Map<int,int> cart = {};
-  final Set<int> fav = {};
-  String search=''; String cat='All'; int bottomIndex=0;
-  int minOrder = 1000;
-  final ScrollController headlineController = ScrollController();
-  final List<String> categories = ['All','General','Glucometer','B.P Operator','Stethoscope','Surgical','Syrup','Tablet','Other'];
+// LOGIN / CREATE ACCOUNT - Admin ID jaisa hi
+class LoginScreen extends StatefulWidget {
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
 
-  String getDT(){ final now=DateTime.now(); String two(int n)=>n.toString().padLeft(2,'0'); final d="${two(now.day)}-${two(now.month)}-${now.year}"; int hh=now.hour; String ap=hh>=12?'PM':'AM'; if(hh>12) hh-=12; if(hh==0) hh=12; return "$d - ${two(hh)}:${two(now.minute)} $ap"; }
-  String generateInvoiceNo(){ final now=DateTime.now(); return "INV-${now.year}${now.month}${now.day}-${now.hour}${now.minute}${now.second}"; }
+class _LoginScreenState extends State<LoginScreen> {
+  bool isLogin = true;
+  final storeCtrl = TextEditingController();
+  final nameCtrl = TextEditingController();
+  final mobileCtrl = TextEditingController();
+  final passCtrl = TextEditingController();
 
-  @override void initState(){ super.initState(); _loadData(); WidgetsBinding.instance.addPostFrameCallback((_)=>_autoScroll()); }
-  Future<void> _autoScroll() async { while(mounted){ await Future.delayed(const Duration(seconds:1)); if(!headlineController.hasClients) continue; final max=headlineController.position.maxScrollExtent; if(max<=0) continue; await headlineController.animateTo(max, duration: const Duration(seconds:25), curve:Curves.linear); await Future.delayed(const Duration(milliseconds:600)); headlineController.jumpTo(0);} }
-  Future<void> _loadData() async { final sp=await SharedPreferences.getInstance(); final s=sp.getString('products_v2'); if(s!=null){ products=(jsonDecode(s) as List).map((e)=>Product.fromJson(e)).toList(); } minOrder=sp.getInt('minOrder')??1000; setState((){}); }
-  Future<void> _openWhatsApp({String? message}) async { final msg=Uri.encodeComponent(message??'Assalam-o-Alaikum FNS Traders'); await launchUrl(Uri.parse('https://wa.me/$whatsappNumber?text=$msg'), mode:LaunchMode.externalApplication); }
-
-  @override Widget build(BuildContext context){
-    return MaterialApp(debugShowCheckedModeBanner:false, home:Scaffold(
-      body:SafeArea(child:Column(children:[
-        Container(height:34, color:const Color(0xFF1E4DB7), alignment:Alignment.centerLeft, child:SingleChildScrollView(controller:headlineController, scrollDirection:Axis.horizontal, physics:const NeverScrollableScrollPhysics(), child:const Padding(padding:EdgeInsets.symmetric(horizontal:16), child:Text(' بابا فلک ناز رحمۃ اللہ علیہ اینڈ سنز ٹریڈرز | Welcome To FNS TRADERS | Special Discount Available | ', style:TextStyle(color:Colors.white, fontWeight:FontWeight.bold))))),
-        Container(width:double.infinity, padding:const EdgeInsets.symmetric(vertical:8), color:Colors.green.shade700, child:const Center(child:Text('مَا شَاءَ اللَّهُ لَا قُوَّةَ إِلَّا بِاللَّهِ', style:TextStyle(color:Colors.white, fontSize:18, fontWeight:FontWeight.w700)))),
-        Expanded(child:[_buildHome(), _buildCart(), _buildFav(), _buildBill()][bottomIndex]),
-      ])),
-      floatingActionButton:FloatingActionButton(backgroundColor:const Color(0xFF25D366), onPressed:()=>_openWhatsApp(), child:const Icon(Icons.chat, color:Colors.white)),
-      bottomNavigationBar:BottomNavigationBar(currentIndex:bottomIndex, type:BottomNavigationBarType.fixed, selectedItemColor:const Color(0xFF1E4DB7), onTap:(i)=>setState(()=>bottomIndex=i), items:const[BottomNavigationBarItem(icon:Icon(Icons.home), label:"Home"), BottomNavigationBarItem(icon:Icon(Icons.shopping_cart), label:"Cart"), BottomNavigationBarItem(icon:Icon(Icons.favorite), label:"Fav"), BottomNavigationBarItem(icon:Icon(Icons.receipt_long), label:"Bill")]),
-    ));
+  // CREATE ACCOUNT - Paki ID same Admin jaisi
+  create() async {
+    var count = await FirebaseFirestore.instance.collection('customers').count().get();
+    String id = 'FNS-${101 + count.count!}';
+    await FirebaseFirestore.instance.collection('customers').doc(id).set({
+      'customerId': id,
+      'storeName': storeCtrl.text,
+      'name': nameCtrl.text,
+      'mobile': mobileCtrl.text,
+      'password': passCtrl.text,
+      'time': FieldValue.serverTimestamp(),
+    });
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CustomerHome(customerId: id)));
   }
 
-  List<Product> get filtered => products.where((p){ final ms=p.name.toLowerCase().contains(search.toLowerCase()); final mc=cat=='All'||p.category==cat; return ms&&mc; }).toList();
-  Widget _buildHome(){ return ListView(padding:const EdgeInsets.all(12), children:[ Image.asset('fns_logo.png', height:110, errorBuilder:(_,__,___)=>const Icon(Icons.store, size:60)), TextField(decoration:InputDecoration(prefixIcon:const Icon(Icons.search), hintText:'Search...', border:OutlineInputBorder(borderRadius:BorderRadius.circular(12))), onChanged:(v)=>setState(()=>search=v)), const SizedBox(height:8), SizedBox(height:40, child:ListView.separated(scrollDirection:Axis.horizontal, itemCount:categories.length, separatorBuilder:(_,__)=>const SizedBox(width:6), itemBuilder:(_,i){ final c=categories[i]; return ChoiceChip(label:Text(c), selected:cat==c, onSelected:(_)=>setState(()=>cat=c)); })),...filtered.asMap().entries.map((e){ final realIdx=products.indexOf(e.value); final p=e.value; return Card(child:ListTile(leading:p.imageBase64.isNotEmpty?Image.memory(base64Decode(p.imageBase64), width:50, height:50, fit:BoxFit.cover):const Icon(Icons.medical_services), title:Text(p.name), subtitle:Column(crossAxisAlignment:CrossAxisAlignment.start, children:[ if(p.discount>0) Text('Rs.${p.price} ${p.discount}% OFF', style:const TextStyle(fontSize:11, color:Colors.red, decoration:TextDecoration.lineThrough)), Text('Final: Rs.${p.finalPrice} | ${p.category} ${p.inStock?'':' (Out of Stock)'}', style:TextStyle(color:p.discount>0?Colors.green:Colors.black, fontWeight:FontWeight.bold)), ]), trailing:Row(mainAxisSize:MainAxisSize.min, children:[IconButton(icon:Icon(fav.contains(realIdx)?Icons.favorite:Icons.favorite_border, color:Colors.red), onPressed:()=>setState((){ if(fav.contains(realIdx)) fav.remove(realIdx); else fav.add(realIdx); })), IconButton(icon:const Icon(Icons.add_shopping_cart), onPressed:p.inStock?(){ setState(()=>cart[realIdx]=(cart[realIdx]??0)+1); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${p.name} Added'))); }:null)]))); })]); }
-  Widget _buildCart(){ int total=0; cart.forEach((k,v){ if(k<products.length) total+=products[k].finalPrice*v; }); return Column(children:[Expanded(child:ListView(children:cart.entries.map((en){ final p=products[en.key]; return ListTile(title:Text(p.name), subtitle:Text('Qty ${en.value} x Rs.${p.finalPrice} ${p.discount>0?'(${p.discount}% OFF)':''}'), trailing:IconButton(icon:const Icon(Icons.delete), onPressed:()=>setState(()=>cart.remove(en.key)))); }).toList())), Container(padding:const EdgeInsets.all(12), color:Colors.grey.shade200, child:Column(children:[Text('Total Rs.$total | Min Order Rs.$minOrder', style:const TextStyle(fontWeight:FontWeight.bold)), SizedBox(width:double.infinity, child:ElevatedButton(onPressed:total==0?null:()=>_orderDialog(total), child:const Text('Confirm Order')))]))]); }
-  void _orderDialog(int total){ if(total<minOrder){ ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Minimum Order Rs.$minOrder'))); return; } final n=TextEditingController(), s=TextEditingController(), a=TextEditingController(), m=TextEditingController(); showDialog(context:context, builder:(_)=>AlertDialog(title:const Text('Order Details'), content:Column(mainAxisSize:MainAxisSize.min, children:[TextField(controller:n, decoration:const InputDecoration(labelText:'Customer Name')), TextField(controller:s, decoration:const InputDecoration(labelText:'Store Name')), TextField(controller:a, decoration:const InputDecoration(labelText:'Address')), TextField(controller:m, decoration:const InputDecoration(labelText:'Mobile'))]), actions:[TextButton(onPressed:()=>Navigator.pop(context), child:const Text('Cancel')), ElevatedButton(onPressed:(){ final msg="NEW ORDER - FNS TRADERS\nDate/Time: ${getDT()}\nInvoice: ${generateInvoiceNo()}\nName:${n.text}\nStore:${s.text}\nAddress:${a.text}\nMobile:${m.text}\n\nItems:\n${cart.entries.map((e){ final p=products[e.key]; return "${p.name} x ${e.value} @ Rs.${p.finalPrice} ${p.discount>0?'(${p.discount}% OFF)':''} = Rs.${p.finalPrice*e.value}"; }).join("\n")}\n\nTotal: Rs. $total\n\nShop: $shopAddress"; Navigator.pop(context); _openWhatsApp(message:msg); }, child:const Text('Send WhatsApp'))])); }
-  Widget _buildFav(){ final list=fav.where((i)=>i<products.length).toList(); if(list.isEmpty) return const Center(child:Text('No Fav')); return ListView(children:list.map((i)=>ListTile(title:Text(products[i].name), subtitle: Text('Final Rs.${products[i].finalPrice}'))).toList()); }
-  Widget _buildBill(){ int total=0; cart.forEach((k,v){ if(k<products.length) total+=products[k].finalPrice*v; }); return Center(child:Text('Bill Total: Rs.$total')); }
+  login() async {
+    var q = await FirebaseFirestore.instance.collection('customers')
+      .where('mobile', isEqualTo: mobileCtrl.text)
+      .where('password', isEqualTo: passCtrl.text).get();
+    if(q.docs.isNotEmpty){
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CustomerHome(customerId: q.docs.first.id)));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ID Ghalat Hai')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.orange.shade300, Colors.orange.shade700])),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(20),
+            child: Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Image.asset('assets/logo.png', height: 80, errorBuilder: (_,__,___) => Icon(Icons.local_pharmacy, size: 80, color: Colors.orange)),
+                    Text("Baba Falak Naz & Son's", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    Text("Trader's (Karachi)"),
+                    SizedBox(height: 20),
+                    if(!isLogin) TextField(controller: storeCtrl, decoration: InputDecoration(labelText: 'Store Name', prefixIcon: Icon(Icons.store))),
+                    if(!isLogin) SizedBox(height: 10),
+                    TextField(controller: nameCtrl, decoration: InputDecoration(labelText: isLogin ? 'Mobile / ID' : 'Customer Name', prefixIcon: Icon(Icons.person))),
+                    SizedBox(height: 10),
+                    if(!isLogin) TextField(controller: mobileCtrl, decoration: InputDecoration(labelText: 'Mobile Number', prefixIcon: Icon(Icons.phone))),
+                    if(!isLogin) SizedBox(height: 10),
+                    TextField(controller: passCtrl, obscureText: true, decoration: InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock))),
+                    SizedBox(height: 20),
+                    SizedBox(width: double.infinity, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, padding: EdgeInsets.symmetric(vertical: 15)), onPressed: (){ isLogin ? login() : create(); }, child: Text(isLogin ? 'LOGIN' : 'CREATE ACCOUNT', style: TextStyle(color: Colors.white)))),
+                    TextButton(onPressed: (){ setState(()=> isLogin = !isLogin); }, child: Text(isLogin ? 'Create New Account' : 'Already have account? Login'))
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// CUSTOMER HOME - Bilkul Admin Jaisa
+class CustomerHome extends StatefulWidget {
+  final String customerId;
+  CustomerHome({required this.customerId});
+  @override
+  State<CustomerHome> createState() => _CustomerHomeState();
+}
+
+class _CustomerHomeState extends State<CustomerHome> {
+  int index = 0;
+  final scrollController = ScrollController();
+
+  @override
+  void initState(){
+    super.initState();
+    // Auto Scrolling Ayat
+    Timer.periodic(Duration(milliseconds: 50), (timer){
+      if(scrollController.hasClients){
+        scrollController.jumpTo(scrollController.offset + 1);
+        if(scrollController.offset >= scrollController.position.maxScrollExtent) scrollController.jumpTo(0);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(110),
+        child: AppBar(
+          backgroundColor: Colors.orange,
+          flexibleSpace: SafeArea(
+            child: Column(
+              children: [
+                SizedBox(height: 5),
+                Text("Baba Falak Naz & Son's Trader's (Karachi)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                Text("Delivery Charges Rs.150 + Free on Rs.5000+", style: TextStyle(color: Colors.white, fontSize: 11)),
+                // SCROLLING AYAT
+                Container(
+                  height: 25, color: Colors.black,
+                  child: ListView(
+                    controller: scrollController,
+                    scrollDirection: Axis.horizontal,
+                    children: [Padding(padding: EdgeInsets.symmetric(horizontal: 20), child: Text("بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ - وَمَا تَوْفِيقِي إِلَّا بِاللَّهِ", style: TextStyle(color: Colors.white)))],
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(5),
+                  child: TextField(decoration: InputDecoration(hintText: 'Hydryllin, Pulmonol, Glucometer, Panadol etc.', filled: true, fillColor: Colors.white, prefixIcon: Icon(Icons.search), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), contentPadding: EdgeInsets.zero)),
+                )
+              ],
+            ),
+          ),
+        ),
+      ),
+      body: Center(child: Text('Yahan Aap Ki Products Ayengi - Admin Jaisi List')),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.green,
+        onPressed: () async {
+          final url = "https://wa.me/923001234567?text=Order ID: ${widget.customerId}";
+          if(await canLaunch(url)) await launch(url);
+        },
+        child: Icon(Icons.chat),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: index,
+        selectedItemColor: Colors.orange,
+        onTap: (i)=> setState(()=> index = i),
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
+          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Fav'),
+          BottomNavigationBarItem(icon: Icon(Icons.receipt), label: 'Bill'),
+          // Admin ka button yahan nahi hai
+        ],
+      ),
+    );
+  }
 }
