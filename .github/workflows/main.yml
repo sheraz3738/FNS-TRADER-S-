@@ -12,10 +12,16 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.3'
-      - run: cp lib/main.dart /tmp/main.dart
+      - run: |
+          cp lib/main.dart /tmp/main.dart
+          cp pubspec.yaml /tmp/pubspec.yaml
+          if [ -f lib/print_service.dart ]; then cp lib/print_service.dart /tmp/print_service.dart; fi
       - run: rm -rf Android android
       - run: flutter create . --project-name fns_trader_s_ --platforms=android
-      - run: cp /tmp/main.dart lib/main.dart
+      - run: |
+          cp /tmp/main.dart lib/main.dart
+          cp /tmp/pubspec.yaml pubspec.yaml
+          if [ -f /tmp/print_service.dart ]; then cp /tmp/print_service.dart lib/print_service.dart; fi
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
