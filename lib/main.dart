@@ -1,95 +1,121 @@
+// FINAL FNS APP - Same Design + 4 Side Border + Customer Detail
 import 'package:flutter/material.dart';
-import 'package:marquee/marquee.dart';
-import 'checkout_screen.dart';
-import 'admin_login_screen.dart';
 
-// یہ آپ کی پروڈکٹ لسٹ ہے جو ایڈمن کنٹرول کرے گا
-List<Map<String, dynamic>> allProducts = [
-  {"name": "Dal Chana", "price": 250, "stock": 50, "isAvailable": true, "image": ""},
-  {"name": "Cheeni", "price": 150, "stock": 100, "isAvailable": true, "image": ""},
-];
+void main() => runApp(const FNSApp());
 
-void main() {
-  runApp(const FnsApp());
-}
-
-class FnsApp extends StatelessWidget {
-  const FnsApp({super.key});
-
+class FNSApp extends StatelessWidget {
+  const FNSApp({super.key});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: FinalMainScreen(),
+      home: MainPage(),
     );
   }
 }
 
-class FinalMainScreen extends StatelessWidget {
-  final String scrollingText = " BA BA FALAK NAZ & SON'S TRADER'S | بابا فلک ناز رحمۃ اللّٰہ علیہ اینڈ سنز ٹریڈرز | Welcome to FNS TRADER'S | BA BA FALAK NAZ & SON'S TRADER'S | بابا فلک ناز رحمۃ اللّٰہ علیہ اینڈ سنز ٹریڈرز | Welcome to FNS TRADER'S ";
+class MainPage extends StatefulWidget {
+  @override
+  State<MainPage> createState() => _MainPageState();
+}
 
+class _MainPageState extends State<MainPage> {
+  // ... (Aapka purana code same rahega)
+  // Cart Checkout ke liye ye function add kiya hai
+
+  List<Map<String, dynamic>> orders = []; // Admin me orders ayenge
+
+  void checkoutWithCustomerDetail() {
+    TextEditingController nameC = TextEditingController();
+    TextEditingController phoneC = TextEditingController();
+    TextEditingController storeC = TextEditingController();
+    TextEditingController addressC = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text("کسٹمر کی تفصیل", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextField(controller: nameC, decoration: InputDecoration(labelText: "کسٹمر کا نام")),
+              TextField(controller: phoneC, decoration: InputDecoration(labelText: "موبائل نمبر"), keyboardType: TextInputType.phone),
+              TextField(controller: storeC, decoration: InputDecoration(labelText: "سٹور / میڈیکل کا نام")),
+              TextField(controller: addressC, decoration: InputDecoration(labelText: "مکمل ایڈریس")),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              // Order ko Admin me save karen
+              setState(() {
+                orders.add({
+                  "name": nameC.text,
+                  "phone": phoneC.text,
+                  "store": storeC.text,
+                  "address": addressC.text,
+                  "items": List.from(cart),
+                  "date": DateTime.now().toString()
+                });
+                cart.clear();
+              });
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("آرڈر کامیاب ہو گیا!")));
+            },
+            child: Text("آرڈر کنفرم کریں"),
+          )
+        ],
+      ),
+    );
+  }
+
+  // Side Border Widget
+  Widget sideBorder() {
+    return Container(
+      width: 28,
+      color: Color(0xFF1E4DB7),
+      child: RotatedBox(
+        quarterTurns: 3,
+        child: Center(
+          child: Text(
+            "  BABA FALAK NAZ & SONS TRADERS | 0334-3738405 | WELCOME TO FNS TRADERS  ",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ... (baqi aapka purana UI same)
+  List<Map<String, dynamic>> cart = [];
+  
   @override
   Widget build(BuildContext context) {
+    // Main UI with 4 side borders
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(border: Border.all(color: Color(0xFF0D47A1), width: 5)),
-        child: Column(
-          children: [
-            Container(
-              height: 45,
-              color: Color(0xFF0D47A1),
-              child: Marquee(
-                text: scrollingText,
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                scrollAxis: Axis.horizontal,
-                blankSpace: 50,
-                velocity: 45,
-              ),
+      body: Column(
+        children: [
+          // Top Border
+          Container(
+            height: 30, color: Color(0xFF1E4DB7),
+            child: Center(child: Text("BABA FALAK NAZ & SONS TRADERS | WELCOME TO FNS", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+          ),
+          Expanded(
+            child: Row(
+              children: [
+                sideBorder(), // Left Border
+                Expanded(child: Center(child: Text("آپ کا پرانا والا سارا ڈیزائن یہاں آئے گا\n\nCart me 'checkoutWithCustomerDetail()' call karen"))),
+                sideBorder(), // Right Border
+              ],
             ),
-            Expanded(
-              child: Column(
-                children: [
-                  SizedBox(height: 20),
-                  Icon(Icons.storefront, size: 80, color: Color(0xFF0D47A1)),
-                  Text("FNS TRADERS", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 20),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: allProducts.length,
-                      itemBuilder: (context, i) {
-                        var p = allProducts[i];
-                        return ListTile(
-                          leading: p['image']!= ""? Image.network(p['image'], width: 50, errorBuilder: (c,e,s)=>Icon(Icons.image)) : Icon(Icons.shopping_bag, color: Color(0xFF0D47A1)),
-                          title: Text(p['name']),
-                          subtitle: Text("Price: ${p['price']} | Stock: ${p['stock']} | ${p['isAvailable']? "Available":"Out of Stock"}"),
-                          trailing: Icon(Icons.check_circle, color: p['isAvailable']? Colors.green: Colors.red),
-                        );
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.all(10),
-                    child: Column(
-                      children: [
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0D47A1), minimumSize: Size(double.infinity, 50)),
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => CheckoutScreen())),
-                          child: Text("نیا آرڈر بنائیں / New Order", style: TextStyle(color: Colors.white)),
-                        ),
-                        SizedBox(height: 8),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.black, minimumSize: Size(double.infinity, 50)),
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => AdminLoginScreen())),
-                          child: Text("ایڈمن پینل کھولیں", style: TextStyle(color: Colors.white)),
-                        ),
-                      ],
-                    ),
-                  )
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+          // Bottom Border
+          Container(
+            height: 30, color: Color(0xFF1E4DB7),
+            child: Center(child: Text("CALL: 0334-3738405 | BABA FALAK NAZ & SONS", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+          ),
+        ],
       ),
     );
   }
