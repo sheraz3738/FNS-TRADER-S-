@@ -2,10 +2,8 @@ name: fns_trader_s_
 description: FNS Traders App.
 publish_to: 'none'
 version: 1.0.0+1
-
 environment:
   sdk: '>=3.0.0 <4.0.0'
-
 dependencies:
   flutter:
     sdk: flutter
@@ -17,13 +15,11 @@ dependencies:
   path_provider: ^2.1.2
   shared_preferences: ^2.2.2
   qr: ^3.0.1
-  marquee: ^2.3.0
+  marquee: ^2.2.3
   flutter_blue_plus: 1.32.12
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
-
 flutter:
   uses-material-design: true
