@@ -4,176 +4,23 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(FNSCustomer());
+void main() async { WidgetsFlutterBinding.ensureInitialized(); await Firebase.initializeApp(); runApp(CustomerApp()); }
+class CustomerApp extends StatelessWidget { @override Widget build(BuildContext context) { return MaterialApp(debugShowCheckedModeBanner: false, home: LoginPage()); } }
+
+class LoginPage extends StatefulWidget { @override _LoginPageState createState() => _LoginPageState(); }
+class _LoginPageState extends State<LoginPage> {
+  bool isLogin = false; final storeCtrl = TextEditingController(); final nameCtrl = TextEditingController(); final mobileCtrl = TextEditingController(); final passCtrl = TextEditingController(); bool load = false;
+  create() async { setState(()=> load=true); var c = await FirebaseFirestore.instance.collection('customers').count().get(); String id = 'FNS-${101 + c.count!}'; await FirebaseFirestore.instance.collection('customers').doc(id).set({'customerId': id, 'storeName': storeCtrl.text, 'customerName': nameCtrl.text, 'mobile': mobileCtrl.text, 'password': passCtrl.text, 'time': FieldValue.serverTimestamp()}); Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=> HomePage(customerId: id, storeName: storeCtrl.text))); setState(()=> load=false); }
+  login() async { setState(()=> load=true); var q = await FirebaseFirestore.instance.collection('customers').where('mobile', isEqualTo: mobileCtrl.text).where('password', isEqualTo: passCtrl.text).get(); if(q.docs.isNotEmpty){ Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=> HomePage(customerId: q.docs.first.id, storeName: q.docs.first['storeName']))); } else { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ghalat ID'))); } setState(()=> load=false); }
+  @override Widget build(BuildContext context) { return Scaffold(body: Container(decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.orange.shade400, Colors.orange.shade800])), child: Center(child: SingleChildScrollView(padding: EdgeInsets.all(20), child: Card(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), child: Padding(padding: EdgeInsets.all(20), child: Column(children: [Icon(Icons.local_pharmacy, size: 80, color: Colors.orange), Text("Baba Falak Naz & Son's"), Text("Trader's (Karachi)", style: TextStyle(fontWeight: FontWeight.bold)), SizedBox(height: 20), if(!isLogin) TextField(controller: storeCtrl, decoration: InputDecoration(labelText: 'Store Name', border: OutlineInputBorder())), SizedBox(height: 10), if(!isLogin) TextField(controller: nameCtrl, decoration: InputDecoration(labelText: 'Customer Name', border: OutlineInputBorder())), SizedBox(height: 10), TextField(controller: mobileCtrl, decoration: InputDecoration(labelText: 'Mobile', border: OutlineInputBorder())), SizedBox(height: 10), TextField(controller: passCtrl, obscureText: true, decoration: InputDecoration(labelText: 'Password', border: OutlineInputBorder())), SizedBox(height: 20), load? CircularProgressIndicator() : SizedBox(width: double.infinity, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.orange), onPressed: (){ isLogin? login() : create(); }, child: Text(isLogin? 'LOGIN' : 'CREATE ACCOUNT', style: TextStyle(color: Colors.white)))), TextButton(onPressed: (){ setState(()=> isLogin =!isLogin); }, child: Text(isLogin? 'Create Account' : 'Already have? Login'))]))))))); }
 }
 
-class FNSCustomer extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: LoginScreen(),
-    );
-  }
-}
-
-// LOGIN / CREATE ACCOUNT - Admin ID jaisa hi
-class LoginScreen extends StatefulWidget {
-  @override
-  State<LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends State<LoginScreen> {
-  bool isLogin = true;
-  final storeCtrl = TextEditingController();
-  final nameCtrl = TextEditingController();
-  final mobileCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
-
-  // CREATE ACCOUNT - Paki ID same Admin jaisi
-  create() async {
-    var count = await FirebaseFirestore.instance.collection('customers').count().get();
-    String id = 'FNS-${101 + count.count!}';
-    await FirebaseFirestore.instance.collection('customers').doc(id).set({
-      'customerId': id,
-      'storeName': storeCtrl.text,
-      'name': nameCtrl.text,
-      'mobile': mobileCtrl.text,
-      'password': passCtrl.text,
-      'time': FieldValue.serverTimestamp(),
-    });
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CustomerHome(customerId: id)));
-  }
-
-  login() async {
-    var q = await FirebaseFirestore.instance.collection('customers')
-      .where('mobile', isEqualTo: mobileCtrl.text)
-      .where('password', isEqualTo: passCtrl.text).get();
-    if(q.docs.isNotEmpty){
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CustomerHome(customerId: q.docs.first.id)));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ID Ghalat Hai')));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.orange.shade300, Colors.orange.shade700])),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(20),
-            child: Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Image.asset('assets/logo.png', height: 80, errorBuilder: (_,__,___) => Icon(Icons.local_pharmacy, size: 80, color: Colors.orange)),
-                    Text("Baba Falak Naz & Son's", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    Text("Trader's (Karachi)"),
-                    SizedBox(height: 20),
-                    if(!isLogin) TextField(controller: storeCtrl, decoration: InputDecoration(labelText: 'Store Name', prefixIcon: Icon(Icons.store))),
-                    if(!isLogin) SizedBox(height: 10),
-                    TextField(controller: nameCtrl, decoration: InputDecoration(labelText: isLogin ? 'Mobile / ID' : 'Customer Name', prefixIcon: Icon(Icons.person))),
-                    SizedBox(height: 10),
-                    if(!isLogin) TextField(controller: mobileCtrl, decoration: InputDecoration(labelText: 'Mobile Number', prefixIcon: Icon(Icons.phone))),
-                    if(!isLogin) SizedBox(height: 10),
-                    TextField(controller: passCtrl, obscureText: true, decoration: InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock))),
-                    SizedBox(height: 20),
-                    SizedBox(width: double.infinity, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, padding: EdgeInsets.symmetric(vertical: 15)), onPressed: (){ isLogin ? login() : create(); }, child: Text(isLogin ? 'LOGIN' : 'CREATE ACCOUNT', style: TextStyle(color: Colors.white)))),
-                    TextButton(onPressed: (){ setState(()=> isLogin = !isLogin); }, child: Text(isLogin ? 'Create New Account' : 'Already have account? Login'))
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// CUSTOMER HOME - Bilkul Admin Jaisa
-class CustomerHome extends StatefulWidget {
-  final String customerId;
-  CustomerHome({required this.customerId});
-  @override
-  State<CustomerHome> createState() => _CustomerHomeState();
-}
-
-class _CustomerHomeState extends State<CustomerHome> {
-  int index = 0;
-  final scrollController = ScrollController();
-
-  @override
-  void initState(){
-    super.initState();
-    // Auto Scrolling Ayat
-    Timer.periodic(Duration(milliseconds: 50), (timer){
-      if(scrollController.hasClients){
-        scrollController.jumpTo(scrollController.offset + 1);
-        if(scrollController.offset >= scrollController.position.maxScrollExtent) scrollController.jumpTo(0);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(110),
-        child: AppBar(
-          backgroundColor: Colors.orange,
-          flexibleSpace: SafeArea(
-            child: Column(
-              children: [
-                SizedBox(height: 5),
-                Text("Baba Falak Naz & Son's Trader's (Karachi)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                Text("Delivery Charges Rs.150 + Free on Rs.5000+", style: TextStyle(color: Colors.white, fontSize: 11)),
-                // SCROLLING AYAT
-                Container(
-                  height: 25, color: Colors.black,
-                  child: ListView(
-                    controller: scrollController,
-                    scrollDirection: Axis.horizontal,
-                    children: [Padding(padding: EdgeInsets.symmetric(horizontal: 20), child: Text("بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ - وَمَا تَوْفِيقِي إِلَّا بِاللَّهِ", style: TextStyle(color: Colors.white)))],
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.all(5),
-                  child: TextField(decoration: InputDecoration(hintText: 'Hydryllin, Pulmonol, Glucometer, Panadol etc.', filled: true, fillColor: Colors.white, prefixIcon: Icon(Icons.search), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), contentPadding: EdgeInsets.zero)),
-                )
-              ],
-            ),
-          ),
-        ),
-      ),
-      body: Center(child: Text('Yahan Aap Ki Products Ayengi - Admin Jaisi List')),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.green,
-        onPressed: () async {
-          final url = "https://wa.me/923001234567?text=Order ID: ${widget.customerId}";
-          if(await canLaunch(url)) await launch(url);
-        },
-        child: Icon(Icons.chat),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: index,
-        selectedItemColor: Colors.orange,
-        onTap: (i)=> setState(()=> index = i),
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Fav'),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt), label: 'Bill'),
-          // Admin ka button yahan nahi hai
-        ],
-      ),
-    );
-  }
+class HomePage extends StatefulWidget { final String customerId; final String storeName; HomePage({required this.customerId, required this.storeName}); @override State<HomePage> createState() => _HomePageState(); }
+class _HomePageState extends State<HomePage> {
+  final ayatCtrl = ScrollController(); List<Map> cart = []; final prods = [{'name':'Hydryllin Syrup','price':250},{'name':'Pulmonol Syrup','price':180},{'name':'Glucometer','price':1500},{'name':'Panadol Extra','price':50}];
+  @override void initState(){ super.initState(); Timer.periodic(Duration(milliseconds: 80), (t){ if(ayatCtrl.hasClients){ ayatCtrl.jumpTo(ayatCtrl.offset + 1.2); if(ayatCtrl.offset >= ayatCtrl.position.maxScrollExtent) ayatCtrl.jumpTo(0); }}); }
+  add(Map p){ setState(()=> cart.add(p)); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added'))); }
+  order() async { if(cart.isEmpty) return; int total = cart.fold(0, (s, e)=> s + e['price'] as int); await FirebaseFirestore.instance.collection('orders').add({'customerId': widget.customerId, 'storeName': widget.storeName, 'items': cart, 'total': total, 'status': 'New', 'time': FieldValue.serverTimestamp()}); setState(()=> cart.clear()); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Order Bhej Diya'))); }
+  wa() async { String url = "https://wa.me/923001234567?text=ID:${widget.customerId}"; if(await canLaunch(url)) await launch(url); }
+  @override Widget build(BuildContext context) { return Scaffold(appBar: PreferredSize(preferredSize: Size.fromHeight(120), child: AppBar(backgroundColor: Colors.orange, flexibleSpace: SafeArea(child: Column(children: [Padding(padding: EdgeInsets.all(8), child: Row(children: [CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.local_pharmacy, color: Colors.orange)), SizedBox(width: 8), Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text("Baba Falak Naz & Son's Trader's (Karachi)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)), Text("ID: ${widget.customerId} | ${widget.storeName}", style: TextStyle(color: Colors.white, fontSize: 9))]), Spacer(), IconButton(onPressed: wa, icon: Icon(Icons.chat, color: Colors.white))])), Container(height: 28, color: Colors.black, child: ListView(controller: ayatCtrl, scrollDirection: Axis.horizontal, children: [Padding(padding: EdgeInsets.symmetric(horizontal: 20, vertical: 6), child: Text("بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ • وَمَا تَوْفِيقِي إِلَّا بِاللَّهِ • FNS TRADERS KARACHI", style: TextStyle(color: Colors.white)))] )), Padding(padding: EdgeInsets.all(8), child: SizedBox(height: 40, child: TextField(decoration: InputDecoration(hintText: 'Hydryllin, Pulmonol, Glucometer...', filled: true, fillColor: Colors.white, prefixIcon: Icon(Icons.search), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none), contentPadding: EdgeInsets.zero))))])))), body: ListView.builder(itemCount: prods.length, itemBuilder: (c,i){ var p=prods[i]; return Card(child: ListTile(title: Text(p['name']), subtitle: Text("Rs.${p['price']}"), trailing: ElevatedButton(onPressed: ()=> add(p), child: Text('ADD'))));}), floatingActionButton: FloatingActionButton.extended(onPressed: order, label: Text('ORDER (${cart.length})'), icon: Icon(Icons.shopping_cart), backgroundColor: Colors.orange), bottomNavigationBar: BottomNavigationBar(type: BottomNavigationBarType.fixed, selectedItemColor: Colors.orange, items: [BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'), BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'), BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Fav'), BottomNavigationBarItem(icon: Icon(Icons.receipt), label: 'Bill')]),); }
 }
