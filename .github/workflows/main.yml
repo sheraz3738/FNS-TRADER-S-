@@ -1,32 +1,33 @@
-name: Build APK
+name: Build FNS Apps
 on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v3
         with:
-          distribution: zulu
+          distribution: 'zulu'
           java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.5'
-      - run: |
-          cp lib/main.dart /tmp/main.dart
-          cp pubspec.yaml /tmp/pubspec.yaml
-          if [ -f lib/print_service.dart ]; then cp lib/print_service.dart /tmp/print_service.dart; fi
-      - run: rm -rf Android android
-      - run: flutter create . --project-name fns_trader_s_ --platforms=android
-      - run: |
-          cp /tmp/main.dart lib/main.dart
-          cp /tmp/pubspec.yaml pubspec.yaml
-          if [ -f /tmp/print_service.dart ]; then cp /tmp/print_service.dart lib/print_service.dart; fi
-          sed -i 's/marquee:.*/marquee: ^2.2.3/' pubspec.yaml
-          sed -i 's/flutter_blue_plus:.*/flutter_blue_plus: 1.32.12/' pubspec.yaml
+          flutter-version: '3.22.0'
       - run: flutter pub get
-      - run: flutter build apk --release
+      - name: Build Admin APK
+        run: |
+          sed -i 's/applicationId ".*"/applicationId "com.fns.traders.admin"/' android/app/build.gradle
+          flutter build apk --release -t lib/main.dart
+          mv build/app/outputs/flutter-apk/app-release.apk FNS-Admin.apk
+      - name: Build Customer APK
+        run: |
+          flutter clean
+          flutter pub get
+          sed -i 's/applicationId ".*"/applicationId "com.fns.traders.customer"/' android/app/build.gradle
+          flutter build apk --release -t lib/main_customer.dart
+          mv build/app/outputs/flutter-apk/app-release.apk FNS-Customer.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: APK
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: FNS-Final-APKs
+          path: |
+            FNS-Admin.apk
+            FNS-Customer.apk
