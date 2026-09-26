@@ -11,7 +11,7 @@ jobs:
           java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.3'
+          flutter-version: '3.24.5'
       - run: |
           cp lib/main.dart /tmp/main.dart
           cp pubspec.yaml /tmp/pubspec.yaml
@@ -22,6 +22,8 @@ jobs:
           cp /tmp/main.dart lib/main.dart
           cp /tmp/pubspec.yaml pubspec.yaml
           if [ -f /tmp/print_service.dart ]; then cp /tmp/print_service.dart lib/print_service.dart; fi
+          sed -i 's/marquee:.*/marquee: ^2.2.3/' pubspec.yaml
+          sed -i 's/flutter_blue_plus:.*/flutter_blue_plus: 1.32.12/' pubspec.yaml
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
