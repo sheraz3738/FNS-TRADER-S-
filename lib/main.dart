@@ -31,15 +31,6 @@ class _FnsAppState extends State<FnsApp> {
   final ScrollController headlineController = ScrollController();
   final List<String> categories = ['All','General','Glucometer','B.P Operator','Stethoscope','Surgical','Syrup','Tablet','Other'];
 
-  String getCurrentDateTime() {
-    final now = DateTime.now();
-    String two(int n) => n.toString().padLeft(2,'0');
-    final date = "${two(now.day)}-${two(now.month)}-${now.year}";
-    final h = now.hour > 12? now.hour - 12 : now.hour == 0? 12 : now.hour;
-    final ampm = now.hour >= 12? 'PM' : 'AM';
-    return "$date - ${two(h)}:${two(now.minute)}:$am2 - $am2".replaceAll("am2", ampm);
-  }
-  // Sahi DateTime Function
   String getDT(){
     final now = DateTime.now();
     String two(int n)=>n.toString().padLeft(2,'0');
@@ -47,6 +38,7 @@ class _FnsAppState extends State<FnsApp> {
     int hh=now.hour; String ap=hh>=12?'PM':'AM'; if(hh>12) hh-=12; if(hh==0) hh=12;
     return "$d - ${two(hh)}:${two(now.minute)} $ap";
   }
+
   String generateInvoiceNo(){
     final now=DateTime.now();
     return "INV-${now.year}${now.month}${now.day}-${now.hour}${now.minute}${now.second}";
@@ -67,7 +59,6 @@ class _FnsAppState extends State<FnsApp> {
     await launchUrl(Uri.parse('https://wa.me/$whatsappNumber?text=$msg'), mode:LaunchMode.externalApplication);
   }
 
-  // ===== DIRECT PRINT FUNCTIONS =====
   Future<void> printA4Bill(int total) async {
     final pdf=pw.Document();
     pdf.addPage(pw.Page(pageFormat:PdfPageFormat.a4, build:(c){
@@ -80,7 +71,7 @@ class _FnsAppState extends State<FnsApp> {
         pw.Align(alignment:pw.Alignment.centerLeft, child:pw.Text('Invoice No: ${generateInvoiceNo()}', style:pw.TextStyle(fontWeight:pw.FontWeight.bold, fontSize:11))),
         pw.Align(alignment:pw.Alignment.centerLeft, child:pw.Text('Date/Time: ${getDT()}', style:pw.TextStyle(fontWeight:pw.FontWeight.bold, fontSize:11))),
         pw.SizedBox(height:8),
-       ...cart.entries.map((e)=>pw.Padding(padding:const pw.EdgeInsets.symmetric(vertical:2), child:pw.Row(mainAxisAlignment:pw.MainAxisAlignment.spaceBetween, children:[pw.Expanded(child:pw.Text('${products[e.key].name} x${e.value}', style:const pw.TextStyle(fontSize:10))), pw.Text('Rs.${products[e.key].price*e.value}', style:const pw.TextStyle(fontSize:10))]))),
+      ...cart.entries.map((e)=>pw.Padding(padding:const pw.EdgeInsets.symmetric(vertical:2), child:pw.Row(mainAxisAlignment:pw.MainAxisAlignment.spaceBetween, children:[pw.Expanded(child:pw.Text('${products[e.key].name} x${e.value}', style:const pw.TextStyle(fontSize:10))), pw.Text('Rs.${products[e.key].price*e.value}', style:const pw.TextStyle(fontSize:10))]))),
         pw.Divider(), pw.Row(mainAxisAlignment:pw.MainAxisAlignment.spaceBetween, children:[pw.Text('TOTAL:', style:pw.TextStyle(fontWeight:pw.FontWeight.bold, fontSize:13)), pw.Text('Rs.$total', style:pw.TextStyle(fontWeight:pw.FontWeight.bold, fontSize:13))]),
         pw.Divider(), pw.Align(alignment:pw.Alignment.centerLeft, child:pw.Text('Note:', style:pw.TextStyle(fontWeight:pw.FontWeight.bold, fontSize:10))),
         pw.Align(alignment:pw.Alignment.centerLeft, child:pw.Text('* Goods once sold will not be taken back or exchanged.\n* Expiry items will not be returned.\n* Please check your bill and goods before leaving.', style:const pw.TextStyle(fontSize:9))),
@@ -89,6 +80,7 @@ class _FnsAppState extends State<FnsApp> {
     }));
     await Printing.layoutPdf(onLayout:(f) async => pdf.save());
   }
+
   Future<void> printThermalBill(int total) async {
     final pdf=pw.Document();
     pdf.addPage(pw.Page(pageFormat:const PdfPageFormat(80*PdfPageFormat.mm, double.infinity), build:(c){
@@ -96,7 +88,7 @@ class _FnsAppState extends State<FnsApp> {
         pw.Text('BABA FALAK NAZ & SONS', style:pw.TextStyle(fontWeight:pw.FontWeight.bold, fontSize:11)), pw.Text('TRADERS', style:pw.TextStyle(fontWeight:pw.FontWeight.bold, fontSize:11)),
         pw.Text('Address: $shopAddress', textAlign:pw.TextAlign.center, style:const pw.TextStyle(fontSize:7)), pw.Text('M/W: $shopMobile', style:const pw.TextStyle(fontSize:7)), pw.Divider(thickness:1),
         pw.Align(alignment:pw.Alignment.centerLeft, child:pw.Text('Inv: ${generateInvoiceNo()}', style:const pw.TextStyle(fontSize:7))), pw.Align(alignment:pw.Alignment.centerLeft, child:pw.Text('DT: ${getDT()}', style:const pw.TextStyle(fontSize:7))), pw.Divider(),
-       ...cart.entries.map((e)=>pw.Row(mainAxisAlignment:pw.MainAxisAlignment.spaceBetween, children:[pw.Expanded(child:pw.Text('${products[e.key].name} x${e.value}', style:const pw.TextStyle(fontSize:7))), pw.Text('Rs.${products[e.key].price*e.value}', style:const pw.TextStyle(fontSize:7))])),
+      ...cart.entries.map((e)=>pw.Row(mainAxisAlignment:pw.MainAxisAlignment.spaceBetween, children:[pw.Expanded(child:pw.Text('${products[e.key].name} x${e.value}', style:const pw.TextStyle(fontSize:7))), pw.Text('Rs.${products[e.key].price*e.value}', style:const pw.TextStyle(fontSize:7))])),
         pw.Divider(), pw.Row(mainAxisAlignment:pw.MainAxisAlignment.spaceBetween, children:[pw.Text('TOTAL Rs.$total', style:pw.TextStyle(fontWeight:pw.FontWeight.bold, fontSize:9))]), pw.SizedBox(height:6), pw.Text('Thank You - Visit Again', style:pw.TextStyle(fontWeight:pw.FontWeight.bold, fontSize:9)),
       ]);
     }));
