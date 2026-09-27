@@ -1,2 +1,9 @@
 import 'package:flutter/material.dart';
-void main() => runApp(MaterialApp(home: Scaffold(body: Center(child: Text("FNS CUSTOMER APP - Working"))), debugShowCheckedModeBanner: false));
+import 'checkout_screen.dart';
+
+void main() {
+  runApp(MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: CheckoutScreen(),
+  ));
+}
