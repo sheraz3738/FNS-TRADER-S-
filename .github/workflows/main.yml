@@ -12,20 +12,20 @@ jobs:
       - run: flutter pub get
 
       - name: Build Customer APK
-        run: flutter build apk --split-per-apk -t lib/main_customer.dart --build-name=customer
+        run: flutter build apk -t lib/main_customer.dart
 
-      - name: Rename Customer APK
-        run: mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/app/outputs/flutter-apk/customer.apk
+      - name: Save Customer APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk customer.apk
 
       - name: Build Admin APK
-        run: flutter build apk --split-per-apk -t lib/main.dart --build-name=admin
+        run: flutter build apk -t lib/main.dart
 
-      - name: Rename Admin APK
-        run: mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/app/outputs/flutter-apk/admin.apk
+      - name: Save Admin APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk admin.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: FNS-Both-APKs
           path: |
-            build/app/outputs/flutter-apk/customer.apk
-            build/app/outputs/flutter-apk/admin.apk
+            customer.apk
+            admin.apk
