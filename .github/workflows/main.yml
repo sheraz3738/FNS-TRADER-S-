@@ -1,30 +1,75 @@
-name: Build FNS APKs
-on:
-  push:
-    branches: [ main, master ]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.2'
-          channel: 'stable'
-      - name: Fix Android Folder
-        run: |
-          if [ -f android/app/google-services.json ]; then cp android/app/google-services.json /tmp/; fi
-          rm -rf android
-          flutter create . --platforms=android --project-name fns_traders
-          if [ -f /tmp/google-services.json ]; then cp /tmp/google-services.json android/app/; fi
-      - name: Install Packages
-        run: flutter pub get
-      - name: Build Admin APK
-        run: flutter build apk --release --target lib/main.dart
-      - name: Build Customer APK
-        run: flutter build apk --release --target lib/main_customer.dart
-      - name: Upload APKs
-        uses: actions/upload-artifact@v4
-        with:
-          name: FNS-APKs
-          path: build/app/outputs/flutter-apk/*.apk
+import 'package:flutter/material.dart';
+import 'dart:typed_data';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
+import 'package:esc_pos_utils_plus/esc_pos_utils.dart';
+
+class PrintService {
+  // 1. PDF Print - Normal wala
+  static Future<void> printReceipt(BuildContext context, Map<String, dynamic> data, Uint8List? logoBytes) async {
+    final pdf = pw.Document();
+    pw.MemoryImage? logoImage;
+    if(logoBytes!= null) logoImage = pw.MemoryImage(logoBytes);
+
+    pdf.addPage(pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      build: (ctx) => pw.Column(children: [
+        if(logoImage!= null) pw.Image(logoImage, width: 110, height: 110),
+        pw.Text("BA BA FALAK NAZ & SON'S TRADER'S", style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+        pw.Text("Order No: ${data['orderNo']} Date: ${data['date']}"),
+        pw.Text("Customer: ${data['customerName']} - ${data['mobile']}"),
+        pw.Divider(),
+        pw.Text("Thank You"),
+      ])
+    ));
+    await Printing.layoutPdf(onLayout: (f) async => pdf.save());
+  }
+
+  // 2. Bluetooth Thermal Print
+  static Future<void> printWithBluetoothThermal(Map<String, dynamic> data) async {
+    bool connected = await PrintBluetoothThermal.connectionStatus;
+    if(!connected){
+      return;
+    }
+    final profile = await CapabilityProfile.load();
+    final generator = Generator(PaperSize.mm80, profile);
+    List<int> bytes = [];
+    bytes += generator.text("BA BA FALAK NAZ & SONS", styles: PosStyles(align: PosAlign.center, bold: true, height: PosTextSize.size2));
+    bytes += generator.text("Plot L 34, K.I.A Karachi", styles: PosStyles(align: PosAlign.center));
+    bytes += generator.text("0334-3738405", styles: PosStyles(align: PosAlign.center, bold: true));
+    bytes += generator.hr();
+    bytes += generator.text("Order: ${data['orderNo']} Date: ${data['date']}");
+    bytes += generator.text("Customer: ${data['customerName']}");
+    bytes += generator.text("Mobile: ${data['mobile']}");
+    bytes += generator.text("Store: ${data['storeName']}");
+    bytes += generator.hr();
+    bytes += generator.text("Thank You - Visit Again", styles: PosStyles(align: PosAlign.center, bold: true));
+    bytes += generator.cut();
+    await PrintBluetoothThermal.writeBytes(bytes);
+  }
+
+  // 3. Dono options ka Dialog
+  static void showBluetoothDialog(BuildContext context, Map<String, dynamic> data, Uint8List? logo){
+    showDialog(context: context, builder: (ctx){
+      return AlertDialog(
+        title: Text("Print Receipt"),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(leading: Icon(Icons.picture_as_pdf), title: Text("PDF Print / Share"), onTap: (){ Navigator.pop(ctx); printReceipt(context, data, logo); }),
+          ListTile(leading: Icon(Icons.bluetooth), title: Text("Bluetooth Thermal"), onTap: () async {
+            final bool enabled = await PrintBluetoothThermal.bluetoothEnabled;
+            if(!enabled){ await PrintBluetoothThermal.connect(macPrinterAddress: ""); }
+            final List<BluetoothInfo> list = await PrintBluetoothThermal.pairedBluetooths;
+            if(list.isEmpty){ ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("No paired printer found"))); return; }
+            // Pehle wale printer se connect
+            await PrintBluetoothThermal.connect(macPrinterAddress: list.first.macAdress);
+            await printWithBluetoothThermal(data);
+            Navigator.pop(ctx);
+          }),
+        ]),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text("Close"))],
+      );
+    });
+  }
+}
