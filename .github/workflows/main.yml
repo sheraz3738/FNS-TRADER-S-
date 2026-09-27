@@ -18,7 +18,7 @@ jobs:
       - name: Fix Android Project
         run: |
           rm -rf android
-          flutter create. --platforms=android --project-name fns_traders
+          flutter create . --platforms=android --project-name fns_traders
           flutter pub get
 
       - name: Build Admin APK
