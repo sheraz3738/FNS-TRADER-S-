@@ -1,42 +1,36 @@
-name: Build FNS Apps
-on: [push]
+name: Build FNS APKs
+on:
+  push:
+    branches: [ main, master ]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-java@v3
-        with:
-          distribution: 'zulu'
-          java-version: '17'
+      - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
-
-      - name: Fix Android Project
+          channel: 'stable'
+      
+      - name: Fix Android Folder
         run: |
+          if [ -f android/app/google-services.json ]; then cp android/app/google-services.json /tmp/
+          fi
           rm -rf android
-          flutter create . --platforms=android --project-name fns_traders
+          flutter create . --platforms=android --project-name fns_trader_s
+          if [ -f /tmp/google-services.json ]; then cp /tmp/google-services.json android/app/
+          fi
           flutter pub get
 
       - name: Build Admin APK
-        run: |
-          flutter build apk --release -t lib/main.dart
-          mv build/app/outputs/flutter-apk/app-release.apk FNS-Admin.apk
+        run: flutter build apk --release --target lib/main.dart
 
       - name: Build Customer APK
-        run: |
-          flutter build apk --release -t lib/main_customer.dart
-          mv build/app/outputs/flutter-apk/app-release.apk FNS-Customer.apk
+        run: flutter build apk --release --target lib/main_customer.dart --split-per-abi
+        # Second build will be named differently, we upload both from same folder
 
-      - name: Upload Admin APK
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: FNS-Admin-APK
-          path: FNS-Admin.apk
-
-      - name: Upload Customer APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: FNS-Customer-APK
-          path: FNS-Customer.apk
+          name: FNS-APKs
+          path: build/app/outputs/flutter-apk/*.apk
