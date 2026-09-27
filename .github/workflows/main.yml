@@ -1,27 +1,16 @@
-name: Build FNS APKs
-on:
-  push:
-    branches: [main, master]
+name: Build Customer APK
+on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.2'
-          channel: 'stable'
-      - name: Recreate Android
-        run: |
-          flutter create . --platforms=android --project-name fns_traders
-      - name: Install Packages
-        run: flutter pub get
-      - name: Build Admin APK
-        run: flutter build apk --release --target lib/main.dart
-      - name: Build Customer APK
-        run: flutter build apk --release --target lib/main_customer.dart
-      - name: Upload APKs
-        uses: actions/upload-artifact@v4
+          flutter-version: '3.22.0'
+      - run: flutter pub get
+      - run: flutter build apk --target-platform android-arm,android-arm64 --split-per-apk -t lib/main_customer.dart
+      - uses: actions/upload-artifact@v3
         with:
-          name: FNS-APKs
-          path: build/app/outputs/flutter-apk/*.apk
+          name: customer-apk
+          path: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
