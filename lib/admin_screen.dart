@@ -1,4 +1,6 @@
+// lib/admin_screen.dart - FINAL (No WhatsApp)
 import 'package:flutter/material.dart';
+import 'print_service.dart';
 
 class AdminScreen extends StatefulWidget {
   @override
@@ -6,69 +8,53 @@ class AdminScreen extends StatefulWidget {
 }
 
 class _AdminScreenState extends State<AdminScreen> {
-  List<Map<String, dynamic>> allProducts = []; // FIXED
-
-  var nameCtrl = TextEditingController();
-  var priceCtrl = TextEditingController();
-  var stockCtrl = TextEditingController();
-
-  void addProduct() {
-    if (nameCtrl.text.isNotEmpty) {
-      setState(() {
-        allProducts.add({
-          'name': nameCtrl.text,
-          'price': priceCtrl.text,
-          'stock': int.tryParse(stockCtrl.text)?? 10,
-          'isAvailable': true,
-        });
-      });
-      nameCtrl.clear();
-      priceCtrl.clear();
-      stockCtrl.clear();
-      Navigator.pop(context);
+  List<Map<String, dynamic>> allOrders = [
+    {
+      "orderNo": "FNS-1234", "date": "2026-05-13", "customerName": "Sheraz Bhai",
+      "mobile": "0334-3738405", "storeName": "FNS Traders - Baldia Karachi", "total": 2500,
+      "items": [{"name": "Rice 5KG", "qty": 2, "total": 1500}, {"name": "Oil 1L", "qty": 1, "total": 1000}]
     }
-  }
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("ایڈمن پینل"), backgroundColor: Color(0xFF0D47A1), foregroundColor: Colors.white),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Color(0xFF0D47A1),
-        child: Icon(Icons.add, color: Colors.white),
-        onPressed: () {
-          showDialog(context: context, builder: (ctx) => AlertDialog(
-            title: Text("نیا پروڈکٹ"),
-            content: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: nameCtrl, decoration: InputDecoration(labelText: "Name")),
-              TextField(controller: priceCtrl, decoration: InputDecoration(labelText: "Price")),
-              TextField(controller: stockCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: "Stock")),
-            ]),
-            actions: [ElevatedButton(onPressed: addProduct, child: Text("Add"))],
-          ));
-        },
-      ),
-      body: ListView.builder(
-        itemCount: allProducts.length,
-        itemBuilder: (c, i) {
-          var p = allProducts[i];
-          return Card(
-            child: ListTile(
-              title: Text(p['name']),
-              subtitle: Text("Price: ${p['price']} | Stock: ${p['stock']}"),
-              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                Switch(value: p['isAvailable'], onChanged: (val) {
-                  setState(()=> allProducts[i]['isAvailable']=val);
-                }),
-                IconButton(icon: Icon(Icons.edit), onPressed: (){
-                  var stockCtrl2 = TextEditingController();
-                  showDialog(context: context, builder: (ctx)=> AlertDialog(title: Text("اسٹاک Add کریں"), content: TextField(controller: stockCtrl2, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: "نیا اسٹاک")), actions: [ElevatedButton(onPressed: (){ setState(()=> allProducts[i]['stock']= int.tryParse(stockCtrl2.text)?? p['stock']); Navigator.pop(ctx); }, child: Text("Save"))]));
-                }),
-                IconButton(icon: Icon(Icons.delete, color: Colors.red), onPressed: ()=> setState(()=> allProducts.removeAt(i))),
-              ]),
-            ),
-          );
-        },
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: PreferredSize(
+          preferredSize: Size.fromHeight(120),
+          child: Column(
+            children: [
+              Container(color: Color(0xFF0D47A1), width: double.infinity, padding: EdgeInsets.only(top: 35, bottom: 8), child: Center(child: Text("FNS TRADERS - ADMIN", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)))),
+              Container(color: Colors.green, width: double.infinity, padding: EdgeInsets.all(6), child: Center(child: Text("مَا شَاءَ اللّٰہُ لَا قُوَّۃَ إِلَّا بِاللّٰہِ", style: TextStyle(color: Colors.white, fontSize: 13)))),
+              TabBar(labelColor: Colors.black, indicatorColor: Color(0xFF0D47A1), tabs: [Tab(icon: Icon(Icons.inventory), text: "Products"), Tab(icon: Icon(Icons.receipt_long), text: "Orders")]),
+            ],
+          ),
+        ),
+        body: TabBarView(children: [
+          Center(child: Text("Yahan Products Aayenge")),
+          ListView.builder(
+            padding: EdgeInsets.all(10),
+            itemCount: allOrders.length,
+            itemBuilder: (c, i) {
+              var order = allOrders[i];
+              return Card(elevation: 3, child: Padding(padding: EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Text("${order['orderNo']}", style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text("Rs. ${order['total']}", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))
+                ]),
+                SizedBox(height: 5),
+                Text("${order['customerName']} - ${order['mobile']}", style: TextStyle(fontSize: 12)),
+                Divider(),
+                Row(children: [
+                  Expanded(child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white), onPressed: ()=> PrintService.printA4Bill(order), icon: Icon(Icons.picture_as_pdf, size: 18), label: Text("A4"))),
+                  SizedBox(width: 10),
+                  Expanded(child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0D47A1), foregroundColor: Colors.white), onPressed: ()=> PrintService.printThermalBill(context, order), icon: Icon(Icons.print, size: 18), label: Text("Thermal"))),
+                ])
+              ]))),
+            },
+          )
+        ]),
       ),
     );
   }
