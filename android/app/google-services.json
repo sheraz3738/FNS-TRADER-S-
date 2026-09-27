@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "463092625779",
+    "project_id": "fns-traders-karachi",
+    "storage_bucket": "fns-traders-karachi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:463092625779:android:ca1ff7fe26440ad5741506",
+        "android_client_info": {
+          "package_name": "com.fns.traders.admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCexV1V2buIZxkMp8UWLrEVyvNZbS-5_jc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
