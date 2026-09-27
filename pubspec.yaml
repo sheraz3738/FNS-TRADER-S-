@@ -11,8 +11,8 @@ dependencies:
   intl: ^0.19.0
   pdf: ^3.10.7
   printing: ^5.11.1
-  print_bluetooth_thermal: ^1.2.4
-  esc_pos_utils_plus: ^2.0.4
+  print_bluetooth_thermal: 1.2.1
+  esc_pos_utils: ^1.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
