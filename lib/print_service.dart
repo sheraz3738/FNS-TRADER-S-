@@ -7,15 +7,13 @@ import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 
 class PrintService {
-
-  // ===== Option 2 - A4 BILL (aapka purana naam) =====
+  
   static Future<void> printA4Bill(Map<String, dynamic> data, {Uint8List? logoBytes}) async {
     final pdf = pw.Document();
     pw.MemoryImage? logoImage;
     if (logoBytes != null) {
       logoImage = pw.MemoryImage(logoBytes);
     }
-
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
@@ -23,11 +21,9 @@ class PrintService {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              if (logoImage != null)
-                pw.Center(child: pw.Image(logoImage!, width: 100, height: 100)),
+              if (logoImage != null) pw.Center(child: pw.Image(logoImage!, width: 100, height: 100)),
               pw.SizedBox(height: 10),
-              pw.Center(child: pw.Text("BA BA FALAK NAZ & SON'S TRADER'S",
-                  style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold))),
+              pw.Center(child: pw.Text("BA BA FALAK NAZ & SON'S TRADER'S", style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold))),
               pw.Center(child: pw.Text("Plot L 34, Sec 15-B, K.I.A Karachi")),
               pw.Center(child: pw.Text("0334-3738405", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
               pw.Divider(),
@@ -40,7 +36,7 @@ class PrintService {
               pw.Text("Items:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
               ...List.generate((data['items'] as List).length, (i) {
                 var item = data['items'][i];
-                return pw.Text("${i+1}. ${item['name']} x ${item['qty']} = Rs ${item['total']}");
+                return pw.Text("${i + 1}. ${item['name']} x ${item['qty']} = Rs ${item['total']}");
               }),
               pw.Divider(),
               pw.Text("Total: Rs ${data['total']}", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
@@ -54,14 +50,12 @@ class PrintService {
     await Printing.layoutPdf(onLayout: (format) async => pdf.save());
   }
 
-  // PDF ka wrapper jisko context chahiye (aapke code ke liye)
   static Future<void> printPdfReceipt(BuildContext context, Map<String, dynamic> data, Uint8List? logoBytes) async {
     await printA4Bill(data, logoBytes: logoBytes);
   }
 
-  // ===== Option 2 - THERMAL BILL (aapka purana naam) =====
-  static Future<void> printThermalBill(BuildContext context, Map<String, dynamic> data) async {
-    await showPrintDialog(context, data, null);
+  static void printThermalBill(BuildContext context, Map<String, dynamic> data) {
+    showPrintDialog(context, data, null);
   }
 
   static Future<void> printBluetoothThermal(Map<String, dynamic> data) async {
@@ -69,9 +63,7 @@ class PrintService {
       CapabilityProfile profile = await CapabilityProfile.load();
       final generator = Generator(PaperSize.mm80, profile);
       List<int> bytes = [];
-
-      bytes += generator.text("BA BA FALAK NAZ & SONS",
-          styles: const PosStyles(align: PosAlign.center, bold: true, height: PosTextSize.size2));
+      bytes += generator.text("BA BA FALAK NAZ & SONS", styles: const PosStyles(align: PosAlign.center, bold: true, height: PosTextSize.size2));
       bytes += generator.text("Plot L 34, Sec 15-B, K.I.A Karachi", styles: const PosStyles(align: PosAlign.center));
       bytes += generator.text("0334-3738405", styles: const PosStyles(align: PosAlign.center, bold: true));
       bytes += generator.hr();
@@ -85,7 +77,6 @@ class PrintService {
         PosColumn(text: 'Qty', width: 2, styles: const PosStyles(bold: true)),
         PosColumn(text: 'Total', width: 4, styles: const PosStyles(bold: true, align: PosAlign.right)),
       ]);
-
       for (var item in (data['items'] as List)) {
         bytes += generator.row([
           PosColumn(text: item['name'].toString(), width: 6),
@@ -93,14 +84,9 @@ class PrintService {
           PosColumn(text: "Rs ${item['total']}", width: 4, styles: const PosStyles(align: PosAlign.right)),
         ]);
       }
-
       bytes += generator.hr();
-      bytes += generator.text("Grand Total: Rs ${data['total']}",
-          styles: const PosStyles(bold: true, align: PosAlign.right));
-      bytes += generator.hr(ch: '=', linesAfter: 1);
-      bytes += generator.text("Thank You!", styles: const PosStyles(align: PosAlign.center, bold: true));
+      bytes += generator.text("Grand Total: Rs ${data['total']}", styles: const PosStyles(bold: true, align: PosAlign.right));
       bytes += generator.cut();
-
       await PrintBluetoothThermal.writeBytes(bytes);
     } catch (e) {
       debugPrint("Print Error: $e");
