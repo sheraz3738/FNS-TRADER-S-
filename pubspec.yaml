@@ -1,27 +1,20 @@
 name: fns_traders
-description: Baba Falak Naz & Sons Traders Karachi - Admin & Customer Apps
+description: FNS Traders - Baba Falak Naz
 publish_to: 'none'
 version: 1.0.0+1
-
 environment:
-  sdk: ">=3.0.0 <4.0.0"
-
+  sdk: '>=3.0.0 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.6
-  firebase_core: ^2.24.2
-  cloud_firestore: ^4.15.5
-  firebase_auth: ^4.15.0
-  url_launcher: ^6.2.5
-
+  cupertino_icons: ^1.0.2
+  intl: ^0.19.0
+  pdf: ^3.10.7
+  printing: ^5.11.1
+  flutter_blue_plus: ^1.31.15
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
-
+  flutter_lints: ^2.0.0
 flutter:
   uses-material-design: true
-  assets:
-    - assets/
-    - assets/images/
