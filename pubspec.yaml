@@ -13,8 +13,16 @@ dependencies:
   printing: ^5.11.1
   print_bluetooth_thermal: 1.2.1
   esc_pos_utils: ^1.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
 flutter:
   uses-material-design: true
+  assets:
+    - assets/
+    - assets/images/
+
+dependency_overrides:
+  image: ^4.0.17
