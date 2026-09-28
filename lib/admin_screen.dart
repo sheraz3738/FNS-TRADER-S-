@@ -34,13 +34,20 @@ class _AdminScreenState extends State<AdminScreen> {
         body: TabBarView(children: [
           Center(child: Text("Yahan Products Aayenge")),
           ListView.builder(
+            ListTile(
+            leading: const Icon(Icons.rule, color: Colors.green),
+            title: const Text("Order Limit Set Karo"),
+            onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminLimitScreen()));
+  },
+),
             padding: EdgeInsets.all(10),
             itemCount: allOrders.length,
             itemBuilder: (c, i) {
               var order = allOrders[i];
               return Card(elevation: 3, child: Padding(padding: EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Text("${order['orderNo']}", style: TextStyle(fontWeight: FontWeight.bold)),
+   we k               Text("${order['orderNo']}", style: TextStyle(fontWeight: FontWeight.bold)),
                   Text("Rs. ${order['total']}", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))
                 ]),
                 SizedBox(height: 5),
