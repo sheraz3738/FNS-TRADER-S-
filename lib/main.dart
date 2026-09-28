@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'login_screen.dart';
+import 'admin_login_screen.dart'; // <-- YE LINE FIX HAI
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,8 +14,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      title: 'FNS Trader Admin',
       theme: ThemeData(primarySwatch: Colors.green),
-      home: const LoginScreen(),
+      home: const AdminLoginScreen(), // <-- YE BHI FIX HAI
     );
   }
 }
