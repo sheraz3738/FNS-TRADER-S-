@@ -51,7 +51,13 @@ class _AdminScreenState extends State<AdminScreen> {
                   SizedBox(width: 10),
                   Expanded(child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0D47A1), foregroundColor: Colors.white), onPressed: ()=> PrintService.printThermalBill(context, order), icon: Icon(Icons.print, size: 18), label: Text("Thermal"))),
                 ])
-              ]))),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.rule, color: Colors.green),
+                  title: const Text("Order Limit Set Karo"),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminLimitScreen())),
+                 ),
+               ),  //.
             },
           )
         ]),
