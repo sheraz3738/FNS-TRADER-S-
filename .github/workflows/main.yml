@@ -9,25 +9,19 @@ jobs:
         with:
           flutter-version: '3.22.0'
           channel: 'stable'
-
       - name: Fix Android V2 Embedding
         run: |
           rm -rf android
-          flutter create --project-name fns_trader --platforms=android.
+          flutter create --project-name fns_trader --platforms=android .
           flutter pub get
-
       - name: Build Customer APK
         run: flutter build apk -t lib/main_customer.dart
-
       - name: Save Customer APK
         run: mv build/app/outputs/flutter-apk/app-release.apk customer.apk
-
       - name: Build Admin APK
         run: flutter build apk -t lib/main.dart
-
       - name: Save Admin APK
         run: mv build/app/outputs/flutter-apk/app-release.apk admin.apk
-
       - uses: actions/upload-artifact@v4
         with:
           name: FNS-Both-APKs
