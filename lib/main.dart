@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'FNS Trader Admin',
       theme: ThemeData(primarySwatch: Colors.green),
-      home: const AdminLoginScreen(), // <-- YE BHI FIX HAI
+      home: AdminLoginScreen(), // <-- YE BHI FIX HAI
     );
   }
 }
