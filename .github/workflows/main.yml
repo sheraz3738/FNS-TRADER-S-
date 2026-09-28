@@ -10,14 +10,29 @@ jobs:
           flutter-version: '3.22.0'
           channel: 'stable'
 
-      - name: Fix Android & Create Missing Files
+      - name: Fix Everything
         run: |
           rm -rf android
           flutter create --project-name fns_trader --platforms=android .
-          # Agar bill_screen aur login_screen GitHub pe nahi hain to dummy bana do
-          if [! -f lib/bill_screen.dart ]; then
-          cat > lib/bill_screen.dart << 'EOF'
+          cat > lib/main_customer.dart << 'EOF'
           import 'package:flutter/material.dart';
+          import 'package:firebase_core/firebase_core.dart';
+          import 'package:cloud_firestore/cloud_firestore.dart';
+
+          void main() async {
+            WidgetsFlutterBinding.ensureInitialized();
+            await Firebase.initializeApp();
+            runApp(const MyApp());
+          }
+
+          class MyApp extends StatelessWidget {
+            const MyApp({super.key});
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(debugShowCheckedModeBanner: false, home: const SignupScreen());
+            }
+          }
+
           class BillScreen extends StatelessWidget {
             final String shopName, customerName, mobile, address;
             const BillScreen({super.key, required this.shopName, required this.customerName, required this.mobile, required this.address});
@@ -26,11 +41,7 @@ jobs:
               return Scaffold(appBar: AppBar(title: Text(shopName)), body: Center(child: Text("Welcome $customerName")));
             }
           }
-          EOF
-          fi
-          if [! -f lib/login_screen.dart ]; then
-          cat > lib/login_screen.dart << 'EOF'
-          import 'package:flutter/material.dart';
+
           class LoginScreen extends StatelessWidget {
             const LoginScreen({super.key});
             @override
@@ -38,8 +49,66 @@ jobs:
               return Scaffold(appBar: AppBar(title: const Text("Login")), body: const Center(child: Text("Login Screen")));
             }
           }
+
+          class SignupScreen extends StatefulWidget {
+            const SignupScreen({super.key});
+            @override
+            State<SignupScreen> createState() => _SignupScreenState();
+          }
+
+          class _SignupScreenState extends State<SignupScreen> {
+            final nameCtrl = TextEditingController();
+            final shopCtrl = TextEditingController();
+            final mobileCtrl = TextEditingController();
+            final passCtrl = TextEditingController();
+            final addressCtrl = TextEditingController();
+            bool isLoading = false;
+            bool showPass = false;
+            Future<void> createId() async {
+              if ([nameCtrl.text, shopCtrl.text, mobileCtrl.text, passCtrl.text, addressCtrl.text].any((e) => e.isEmpty)) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Sab fields bharo")));
+                return;
+              }
+              setState(() => isLoading = true);
+              try {
+                String docId = mobileCtrl.text.trim();
+                await FirebaseFirestore.instance.collection('customers').doc(docId).set({
+                  'customerName': nameCtrl.text.trim(), 'shopName': shopCtrl.text.trim(),
+                  'mobile': docId, 'password': passCtrl.text.trim(), 'address': addressCtrl.text.trim(),
+                  'createdAt': FieldValue.serverTimestamp(),
+                });
+                if (!mounted) return;
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => BillScreen(shopName: shopCtrl.text, customerName: nameCtrl.text, mobile: docId, address: addressCtrl.text)));
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+              } finally {
+                setState(() => isLoading = false);
+              }
+            }
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                appBar: AppBar(title: const Text("FNS Traders - Create ID")),
+                body: SingleChildScrollView(padding: const EdgeInsets.all(20),
+                  child: Column(children: [
+                    TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Customer Name")),
+                    const SizedBox(height: 10),
+                    TextField(controller: shopCtrl, decoration: const InputDecoration(labelText: "Shop Name")),
+                    const SizedBox(height: 10),
+                    TextField(controller: mobileCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: "Mobile Number")),
+                    const SizedBox(height: 10),
+                    TextField(controller: passCtrl, obscureText:!showPass, decoration: InputDecoration(labelText: "Password", suffixIcon: IconButton(icon: Icon(showPass? Icons.visibility : Icons.visibility_off), onPressed: ()=>setState(()=>showPass=!showPass)))),
+                    const SizedBox(height: 10),
+                    TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: "Address")),
+                    const SizedBox(height: 30),
+                    isLoading? const CircularProgressIndicator() : SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: createId, child: const Text("Create My Shop ID"))),
+                    TextButton(onPressed: ()=>Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>const LoginScreen())), child: const Text("Already have ID? Login"))
+                  ]),
+                ),
+              );
+            }
+          }
           EOF
-          fi
           flutter pub get
 
       - name: Build Customer APK
