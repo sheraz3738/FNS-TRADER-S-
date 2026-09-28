@@ -1,7 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'bill_screen.dart';
 import 'login_screen.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'FNS Traders Customer',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const SignupScreen(),
+    );
+  }
+}
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -57,11 +77,11 @@ class _SignupScreenState extends State<SignupScreen> {
           const SizedBox(height: 10),
           TextField(controller: mobileCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: "Mobile Number (ID banega)")),
           const SizedBox(height: 10),
-          TextField(controller: passCtrl, obscureText: !showPass, decoration: InputDecoration(labelText: "Password (6+ huruf)", suffixIcon: IconButton(icon: Icon(showPass ? Icons.visibility : Icons.visibility_off), onPressed: ()=>setState(()=>showPass=!showPass)))),
+          TextField(controller: passCtrl, obscureText:!showPass, decoration: InputDecoration(labelText: "Password (6+ huruf)", suffixIcon: IconButton(icon: Icon(showPass? Icons.visibility : Icons.visibility_off), onPressed: ()=>setState(()=>showPass=!showPass)))),
           const SizedBox(height: 10),
           TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: "Address")),
           const SizedBox(height: 30),
-          isLoading ? const CircularProgressIndicator() : SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: createId, child: const Text("Create My Shop ID"))),
+          isLoading? const CircularProgressIndicator() : SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: createId, child: const Text("Create My Shop ID"))),
           TextButton(onPressed: ()=>Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>const LoginScreen())), child: const Text("Already have ID? Login"))
         ]),
       ),
