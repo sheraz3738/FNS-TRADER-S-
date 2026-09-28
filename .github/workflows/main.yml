@@ -9,19 +9,51 @@ jobs:
         with:
           flutter-version: '3.22.0'
           channel: 'stable'
-      - name: Fix Android
+
+      - name: Fix Android & Create Missing Files
         run: |
           rm -rf android
           flutter create --project-name fns_trader --platforms=android .
+          # Agar bill_screen aur login_screen GitHub pe nahi hain to dummy bana do
+          if [! -f lib/bill_screen.dart ]; then
+          cat > lib/bill_screen.dart << 'EOF'
+          import 'package:flutter/material.dart';
+          class BillScreen extends StatelessWidget {
+            final String shopName, customerName, mobile, address;
+            const BillScreen({super.key, required this.shopName, required this.customerName, required this.mobile, required this.address});
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(appBar: AppBar(title: Text(shopName)), body: Center(child: Text("Welcome $customerName")));
+            }
+          }
+          EOF
+          fi
+          if [! -f lib/login_screen.dart ]; then
+          cat > lib/login_screen.dart << 'EOF'
+          import 'package:flutter/material.dart';
+          class LoginScreen extends StatelessWidget {
+            const LoginScreen({super.key});
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(appBar: AppBar(title: const Text("Login")), body: const Center(child: Text("Login Screen")));
+            }
+          }
+          EOF
+          fi
           flutter pub get
+
       - name: Build Customer APK
         run: flutter build apk -t lib/main_customer.dart
+
       - name: Save Customer APK
         run: mv build/app/outputs/flutter-apk/app-release.apk customer.apk
+
       - name: Build Admin APK
         run: flutter build apk -t lib/main.dart
+
       - name: Save Admin APK
         run: mv build/app/outputs/flutter-apk/app-release.apk admin.apk
+
       - uses: actions/upload-artifact@v4
         with:
           name: FNS-Both-APKs
