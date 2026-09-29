@@ -13,7 +13,7 @@ class _AdminScreenState extends State<AdminScreen> {
   final nameCtrl = TextEditingController();
   final priceCtrl = TextEditingController();
 
-  void addProduct(){
+  void addProduct() {
     FirebaseFirestore.instance.collection('products').add({
       'name': nameCtrl.text,
       'price': priceCtrl.text,
@@ -23,22 +23,23 @@ class _AdminScreenState extends State<AdminScreen> {
     Navigator.pop(context);
   }
 
-  Future<void> printA4(Map order) async {
+  Future<void> printA4(Map orderData, String invNo) async {
     final pdf = pw.Document();
-    pdf.addPage(pw.Page(pageFormat: PdfPageFormat.a4, build: (c){
-      return pw.Column(children: [
-        pw.Image(pw.MemoryImage((null as dynamic)), height: 80), // logo
-        pw.Text("FNS TRADERS", style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
-        pw.Text("Invoice No: ${order['id']?? '001'}"),
-        pw.Text("Date: ${DateTime.now()}"),
+    pdf.addPage(pw.Page(pageFormat: PdfPageFormat.a4, build: (c) {
+      return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+        pw.Center(child: pw.Text("FNS TRADERS", style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold))),
+        pw.Center(child: pw.Text("BA BA FALAK NAZ & SON'S TRADERS")),
+        pw.Center(child: pw.Text("بابا فلک ناز رحمتہ اللہ علیہ اینڈ سنز ٹریڈرز")),
         pw.Divider(),
-        pw.Text("TOTAL: Rs. ${order['total']?? ''}", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-        pw.Text("Note: ${order['note']?? ''}"),
+        pw.Text("Invoice No: $invNo", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+        pw.Text("Date: ${DateTime.now().toString().substring(0,19)}"),
         pw.SizedBox(height: 20),
-        pw.Text("THANK YOU FOR VISITING FNS TRADERS", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+        pw.Text("Total: Rs. ${orderData['total']?? 0}", style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 30),
+        pw.Center(child: pw.Text("THANK YOU - FNS TRADERS")),
       ]);
     }));
-    await Printing.layoutPdf(onLayout: (f)=> pdf.save());
+    await Printing.layoutPdf(onLayout: (f) => pdf.save());
   }
 
   @override
@@ -47,35 +48,37 @@ class _AdminScreenState extends State<AdminScreen> {
       appBar: AppBar(title: Text("FNS ADMIN"), backgroundColor: Color(0xFF0D47A1), foregroundColor: Colors.white),
       body: Column(
         children: [
-          Container(color: Color(0xFF0D47A1), width: double.infinity, padding: EdgeInsets.all(8), child: Text("WELCOME TO FNS TRADERS | BABA FALAK NAZ", style: TextStyle(color: Colors.white), textAlign: TextAlign.center)),
-          Image.asset('fns_logo.png', height: 80),
-          Container(color: Colors.green[700], width: double.infinity, padding: EdgeInsets.all(8), child: Text("مَا شَاءَ اللهُ لَا قُوَّةَ إِلَّا بِاللَّهِ", style: TextStyle(color: Colors.white), textAlign: TextAlign.center)),
+          // FINAL SCROLLING - ENGLISH + URDU AS PER YOUR DEMAND
+          Container(width: double.infinity, color: Color(0xFF0D47A1), padding: EdgeInsets.symmetric(vertical: 10),
+            child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Text("   WELCOME TO FNS TRADERS | BA BA FALAK NAZ & SON'S TRADERS | بابا فلک ناز رحمتہ اللہ علیہ اینڈ سنز ٹریڈرز   ", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)))),
 
-          Padding(padding: EdgeInsets.all(8), child: ElevatedButton.icon(icon: Icon(Icons.add), label: Text("Add Product"), onPressed: (){
+          Container(color: Colors.white, width: double.infinity, padding: EdgeInsets.all(10), child: Image.asset('fns_logo.png', height: 90)),
+
+          Container(width: double.infinity, color: Colors.green[700], padding: EdgeInsets.all(8), child: Text("مَا شَاءَ اللهُ لَا قُوَّةَ إِلَّا بِاللَّهِ", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+
+          Padding(padding: EdgeInsets.all(8), child: SizedBox(width: double.infinity, child: ElevatedButton.icon(icon: Icon(Icons.add), label: Text("Add Product"), style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0D47A1), foregroundColor: Colors.white), onPressed: (){
             showDialog(context: context, builder: (c)=> AlertDialog(title: Text("Add Product"), content: Column(mainAxisSize: MainAxisSize.min, children: [
               TextField(controller: nameCtrl, decoration: InputDecoration(labelText: "Name")),
               TextField(controller: priceCtrl, decoration: InputDecoration(labelText: "Price"), keyboardType: TextInputType.number),
             ]), actions: [ElevatedButton(onPressed: addProduct, child: Text("Save"))]));
-          })),
+          }))),
 
-          Expanded(child: StreamBuilder(stream: FirebaseFirestore.instance.collection('orders').orderBy('createdAt', descending: true).snapshots(),
-            builder: (c,s){
-              if(!s.hasData) return Center(child: CircularProgressIndicator());
-              if(s.data!.docs.isEmpty) return Center(child: Text("Koi Order Nahi Hai"));
-              return ListView.builder(itemCount: s.data!.docs.length, itemBuilder: (c,i){
-                var doc = s.data!.docs[i].data() as Map;
-                return Card(margin: EdgeInsets.all(8), child: Padding(padding: EdgeInsets.all(10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text("Invoice No: ${s.data!.docs[i].id.substring(0,6)}", style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text("TOTAL: Rs. ${doc['total']?? 0}"),
-                  SizedBox(height: 10),
-                  Row(children: [
-                    Expanded(child: ElevatedButton.icon(icon: Icon(Icons.print), label: Text("A4 Print"), style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0D47A1), foregroundColor: Colors.white), onPressed: ()=> printA4(doc))),
-                    SizedBox(width: 10),
-                    Expanded(child: ElevatedButton.icon(icon: Icon(Icons.receipt), label: Text("Thermal 80mm"), style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], foregroundColor: Colors.white), onPressed: ()=> printA4(doc))),
-                  ])
-                ])));
-              });
-            }))
+          Expanded(child: StreamBuilder(stream: FirebaseFirestore.instance.collection('orders').orderBy('createdAt', descending: true).snapshots(), builder: (c,s){
+            if(!s.hasData) return Center(child: CircularProgressIndicator());
+            return ListView.builder(itemCount: s.data!.docs.length, itemBuilder: (c,i){
+              var doc = s.data!.docs[i]; var data = doc.data() as Map; String invNo = doc.id.substring(0,6).toUpperCase();
+              return Card(margin: EdgeInsets.symmetric(horizontal: 10, vertical: 6), child: Padding(padding: EdgeInsets.all(10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text("Invoice No: $invNo", style: TextStyle(fontWeight: FontWeight.bold)),
+                Text("TOTAL: Rs. ${data['total']??0}", style: TextStyle(fontWeight: FontWeight.bold)),
+                SizedBox(height: 10),
+                Row(children: [
+                  Expanded(child: ElevatedButton.icon(icon: Icon(Icons.print), label: Text("A4 Print"), style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0D47A1), foregroundColor: Colors.white), onPressed: ()=> printA4(data, invNo))),
+                  SizedBox(width: 10),
+                  Expanded(child: ElevatedButton.icon(icon: Icon(Icons.receipt_long), label: Text("Thermal 80mm"), style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], foregroundColor: Colors.white), onPressed: ()=> printA4(data, invNo))),
+                ])
+              ])));
+            });
+          }))
         ],
       ),
     );
