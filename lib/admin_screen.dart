@@ -1,73 +1,78 @@
-// lib/admin_screen.dart - FINAL (No WhatsApp)
 import 'package:flutter/material.dart';
-import 'print_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'admin_limit_screen.dart';
 
-class AdminScreen extends StatefulWidget {
-  @override
-  _AdminScreenState createState() => _AdminScreenState();
-}
-
-class _AdminScreenState extends State<AdminScreen> {
-  List<Map<String, dynamic>> allOrders = [
-    {
-      "orderNo": "FNS-1234", "date": "2026-05-13", "customerName": "Sheraz Bhai",
-      "mobile": "0334-3738405", "storeName": "FNS Traders - Baldia Karachi", "total": 2500,
-      "items": [{"name": "Rice 5KG", "qty": 2, "total": 1500}, {"name": "Oil 1L", "qty": 1, "total": 1000}]
-    }
-  ];
+class AdminScreen extends StatelessWidget {
+  const AdminScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: PreferredSize(
-          preferredSize: Size.fromHeight(120),
-          child: Column(
-            children: [
-              Container(color: Color(0xFF0D47A1), width: double.infinity, padding: EdgeInsets.only(top: 35, bottom: 8), child: Center(child: Text("FNS TRADERS - ADMIN", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)))),
-              Container(color: Colors.green, width: double.infinity, padding: EdgeInsets.all(6), child: Center(child: Text("مَا شَاءَ اللّٰہُ لَا قُوَّۃَ إِلَّا بِاللّٰہِ", style: TextStyle(color: Colors.white, fontSize: 13)))),
-              TabBar(labelColor: Colors.black, indicatorColor: Color(0xFF0D47A1), tabs: [Tab(icon: Icon(Icons.inventory), text: "Products"), Tab(icon: Icon(Icons.receipt_long), text: "Orders")]),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("FNS Admin Panel"),
+        backgroundColor: Colors.green,
+      ),
+      body: Column(
+        children: [
+          // LIMIT BUTTON
+          Card(
+            color: Colors.green.shade50,
+            child: ListTile(
+              leading: const Icon(Icons.rule, color: Colors.green, size: 30),
+              title: const Text("Order Limit Set Karo", style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text("Minimum order amount set karo"),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AdminLimitScreen()),
+                );
+              },
+            ),
           ),
-        ),
-        body: TabBarView(children: [
-          Center(child: Text("Yahan Products Aayenge")),
-          ListView.builder(
-            ListTile(
-            leading: const Icon(Icons.rule, color: Colors.green),
-            title: const Text("Order Limit Set Karo"),
-            onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminLimitScreen()));
-  },
-),
-            padding: EdgeInsets.all(10),
-            itemCount: allOrders.length,
-            itemBuilder: (c, i) {
-              var order = allOrders[i];
-              return Card(elevation: 3, child: Padding(padding: EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-   we k               Text("${order['orderNo']}", style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text("Rs. ${order['total']}", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))
-                ]),
-                SizedBox(height: 5),
-                Text("${order['customerName']} - ${order['mobile']}", style: TextStyle(fontSize: 12)),
-                Divider(),
-                Row(children: [
-                  Expanded(child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white), onPressed: ()=> PrintService.printA4Bill(order), icon: Icon(Icons.picture_as_pdf, size: 18), label: Text("A4"))),
-                  SizedBox(width: 10),
-                  Expanded(child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0D47A1), foregroundColor: Colors.white), onPressed: ()=> PrintService.printThermalBill(context, order), icon: Icon(Icons.print, size: 18), label: Text("Thermal"))),
-                ])
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.rule, color: Colors.green),
-                  title: const Text("Order Limit Set Karo"),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminLimitScreen())),
-                 ),
-               ),  //.
-            },
-          )
-        ]),
+          const Divider(),
+
+          // ORDERS LIST
+          const Padding(
+            padding: EdgeInsets.all(12),
+            child: Text("Orders", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('orders').snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                var orders = snapshot.data!.docs;
+                if (orders.isEmpty) {
+                  return const Center(child: Text("Koi order nahi hai"));
+                }
+                return ListView.builder(
+                  itemCount: orders.length,
+                  itemBuilder: (context, index) {
+                    var order = orders[index].data() as Map<String, dynamic>;
+                    return Card(
+                      elevation: 3,
+                      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Order: ${order['orderNo']?? ''}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text("Customer: ${order['customerName']?? ''}"),
+                            Text("Total: Rs ${order['total']?? ''}"),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
