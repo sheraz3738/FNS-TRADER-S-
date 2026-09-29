@@ -4,7 +4,6 @@ import 'admin_login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -14,9 +13,20 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'FNS Admin',
-      theme: ThemeData(primarySwatch: Colors.green),
-      home: AdminLoginScreen(),
+      home: FutureBuilder(
+        future: Firebase.initializeApp(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Scaffold(
+              body: Center(child: Text("Firebase Error:\n${snapshot.error}", textAlign: TextAlign.center)),
+            );
+          }
+          if (snapshot.connectionState == ConnectionState.done) {
+            return AdminLoginScreen();
+          }
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        },
+      ),
     );
   }
 }
