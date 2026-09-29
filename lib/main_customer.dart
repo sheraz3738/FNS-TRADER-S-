@@ -13,12 +13,10 @@ void main() async {
 
 class MyCustomerApp extends StatelessWidget {
   const MyCustomerApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'FNS Traders',
       home: CustomerScreen(),
     );
   }
