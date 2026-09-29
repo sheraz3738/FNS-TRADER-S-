@@ -1,77 +1,67 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'admin_limit_screen.dart';
 
-class AdminScreen extends StatelessWidget {
-  const AdminScreen({super.key});
+class AdminScreen extends StatefulWidget {
+  @override
+  State<AdminScreen> createState() => _AdminScreenState();
+}
+
+class _AdminScreenState extends State<AdminScreen> {
+  final nameCtrl = TextEditingController();
+  final priceCtrl = TextEditingController();
+  final limitCtrl = TextEditingController();
+
+  void addProduct() {
+    if (nameCtrl.text.isEmpty) return;
+    FirebaseFirestore.instance.collection('products').add({
+      'name': nameCtrl.text,
+      'price': priceCtrl.text.isEmpty? "0" : priceCtrl.text,
+      'category': 'General',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    nameCtrl.clear(); priceCtrl.clear();
+    Navigator.pop(context);
+  }
+
+  void saveLimit() {
+     FirebaseFirestore.instance.collection('settings').doc('orderLimit').set({'limit': limitCtrl.text});
+     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Limit Save Ho Gaya")));
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("FNS Admin Panel"),
-        backgroundColor: Colors.green,
-      ),
+      appBar: AppBar(title: Text("FNS ADMIN PANEL"), backgroundColor: Color(0xFF0D47A1), foregroundColor: Colors.white),
       body: Column(
         children: [
-          // LIMIT BUTTON
-          Card(
-            color: Colors.green.shade50,
-            child: ListTile(
-              leading: const Icon(Icons.rule, color: Colors.green, size: 30),
-              title: const Text("Order Limit Set Karo", style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text("Minimum order amount set karo"),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AdminLimitScreen()),
-                );
-              },
-            ),
-          ),
-          const Divider(),
+          Container(width: double.infinity, color: Color(0xFF0D47A1), padding: EdgeInsets.all(8),
+            child: Text("BABA FALAK NAZ & SONS TRADERS | بابا فلک ناز اینڈ سنز ٹریڈرز", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
+          Image.asset('fns_logo.png', height: 90, errorBuilder: (a,b,c)=> Icon(Icons.store, size: 70)),
+          Container(width: double.infinity, color: Colors.green[700], padding: EdgeInsets.all(8),
+            child: Text("مَا شَاءَ اللهُ لَا قُوَّةَ إِلَّا بِاللَّهِ", textAlign: TextAlign.center, style: TextStyle(color: Colors.white))),
 
-          // ORDERS LIST
-          const Padding(
-            padding: EdgeInsets.all(12),
-            child: Text("Orders", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('orders').snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                var orders = snapshot.data!.docs;
-                if (orders.isEmpty) {
-                  return const Center(child: Text("Koi order nahi hai"));
-                }
-                return ListView.builder(
-                  itemCount: orders.length,
-                  itemBuilder: (context, index) {
-                    var order = orders[index].data() as Map<String, dynamic>;
-                    return Card(
-                      elevation: 3,
-                      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("Order: ${order['orderNo']?? ''}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                            Text("Customer: ${order['customerName']?? ''}"),
-                            Text("Total: Rs ${order['total']?? ''}"),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
+          Padding(padding: EdgeInsets.all(10), child: Row(children: [
+            Expanded(child: TextField(controller: limitCtrl, decoration: InputDecoration(labelText: "Order Limit Rs.", border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+            SizedBox(width: 8),
+            ElevatedButton(onPressed: saveLimit, child: Text("Save Limit"))
+          ])),
+
+          Padding(padding: EdgeInsets.symmetric(horizontal: 10),
+            child: ElevatedButton.icon(icon: Icon(Icons.add), label: Text("Add New Product"), style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 50), backgroundColor: Color(0xFF0D47A1), foregroundColor: Colors.white),
+              onPressed: (){ showDialog(context: context, builder: (c)=> AlertDialog(title: Text("Add Product"), content: Column(mainAxisSize: MainAxisSize.min, children: [
+                TextField(controller: nameCtrl, decoration: InputDecoration(labelText: "Product Name")),
+                TextField(controller: priceCtrl, decoration: InputDecoration(labelText: "Price Rs."), keyboardType: TextInputType.number),
+              ]), actions: [ElevatedButton(onPressed: addProduct, child: Text("Save"))])); })),
+
+          Divider(),
+          Expanded(child: StreamBuilder(stream: FirebaseFirestore.instance.collection('products').snapshots(),
+            builder: (c,s){
+              if(!s.hasData) return Center(child: CircularProgressIndicator());
+              return ListView.builder(itemCount: s.data!.docs.length, itemBuilder: (c,i){
+                var d = s.data!.docs[i];
+                return ListTile(title: Text(d['name']), subtitle: Text("Rs. ${d['price']}"), trailing: IconButton(icon: Icon(Icons.delete, color: Colors.red), onPressed: ()=> d.reference.delete()));
+              });
+            })),
         ],
       ),
     );
