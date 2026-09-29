@@ -2,7 +2,6 @@ plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
-    id "com.google.gms.google-services"
 }
 
 def localProperties = new Properties()
@@ -24,8 +23,8 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "com.fns.traders.admin"
-    compileSdk 34
+    namespace "com.fns.trader"
+    compileSdkVersion 34
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -42,11 +41,26 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.fns.traders.admin"
-        minSdk 23
-        targetSdk 34
+        applicationId "com.fns.trader"
+        minSdkVersion 21
+        targetSdkVersion 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+    }
+
+    // --- YAHAN SE 2 APPS ALAG HONGE ---
+    flavorDimensions "type"
+    productFlavors {
+        admin {
+            dimension "type"
+            applicationId "com.fns.admin"
+            resValue "string", "app_name", "FNS Admin"
+        }
+        customer {
+            dimension "type"
+            applicationId "com.fns.customer"
+            resValue "string", "app_name", "FNS Customer"
+        }
     }
 
     buildTypes {
@@ -59,5 +73,3 @@ android {
 flutter {
     source '../..'
 }
-
-dependencies {}
