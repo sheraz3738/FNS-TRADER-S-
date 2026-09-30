@@ -8,11 +8,25 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.19.6'
+      
+      - name: Migrate to V2 Embedding
+        run: |
+          cp android/app/google-services.json /tmp/g.json || echo "no json"
+          rm -rf android
+          flutter create . --platforms=android --org com.fns.traders --project-name fns_trader_s
+          cp /tmp/g.json android/app/google-services.json || echo "restore failed"
+          # Add google-services plugin
+          echo "Applying Firebase fix..."
+          sed -i "s/id \"dev.flutter.flutter-gradle-plugin\"/id \"dev.flutter.flutter-gradle-plugin\"\n    id \"com.google.gms.google-services\"/" android/app/build.gradle
+          sed -i "s/com.android.tools.build:gradle:8.3.0/com.android.tools.build:gradle:7.3.0/" android/build.gradle
+          grep -q "google-services" android/build.gradle || sed -i "/dependencies {/a \        classpath 'com.google.gms:google-services:4.4.1'" android/build.gradle
+
       - run: flutter pub get
       - run: flutter build apk --release -t lib/main.dart
       - run: mv build/app/outputs/flutter-apk/app-release.apk build/admin.apk
       - run: flutter build apk --release -t lib/main_customer.dart
       - run: mv build/app/outputs/flutter-apk/app-release.apk build/customer.apk
+      
       - uses: actions/upload-artifact@v4
         with:
           name: admin-apk
