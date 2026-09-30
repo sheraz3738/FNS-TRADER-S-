@@ -13,7 +13,7 @@ jobs:
         run: |
           cp android/app/google-services.json /tmp/g.json || true
           rm -rf android
-          flutter create . --platforms=android
+          flutter create . --platforms=android --project-name fns_trader_s
           cp /tmp/g.json android/app/google-services.json
           
           cat > android/build.gradle <<'EOF'
