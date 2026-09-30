@@ -9,8 +9,10 @@ jobs:
         with:
           flutter-version: '3.22.0'
       - run: flutter pub get
-      - run: flutter build apk --release -t lib/main.dart --output build/admin.apk
-      - run: flutter build apk --release -t lib/main_customer.dart --output build/customer.apk
+      - run: flutter build apk --release -t lib/main.dart
+      - run: mv build/app/outputs/flutter-apk/app-release.apk build/admin.apk
+      - run: flutter build apk --release -t lib/main_customer.dart
+      - run: mv build/app/outputs/flutter-apk/app-release.apk build/customer.apk
       - name: Upload Admin APK
         uses: actions/upload-artifact@v4
         with:
