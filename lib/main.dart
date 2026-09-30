@@ -4,6 +4,13 @@ import 'admin_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(MaterialApp(debugShowCheckedModeBanner: false, home: AdminScreen()));
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    print("Firebase Error: $e");
+  }
+  runApp(MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: AdminScreen(),
+  ));
 }
