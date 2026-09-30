@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'customer_screen.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    print("Firebase Error: $e");
+void main() {
+  runApp(const MyAppCustomer());
+}
+
+class MyAppCustomer extends StatelessWidget {
+  const MyAppCustomer({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'FNS Customer',
+      home: CustomerScreen(),
+    );
   }
-  runApp(MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: CustomerScreen(),
-  ));
 }
