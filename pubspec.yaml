@@ -1,11 +1,9 @@
 name: fns_traders
-description: FNS TRADERS - BA BA FALAK NAZ & SON'S TRADERS
+description: FNS TRADERS - Ba Ba Falak Naz
 publish_to: 'none'
 version: 1.0.0+1
-
 environment:
   sdk: '>=3.0.0 <4.0.0'
-
 dependencies:
   flutter:
     sdk: flutter
@@ -16,13 +14,10 @@ dependencies:
   image_picker: ^1.0.7
   pdf: ^3.10.7
   printing: ^5.11.1
-
+  url_launcher: ^6.2.5
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
-
 flutter:
   uses-material-design: true
-  assets:
-    - fns_logo.png
