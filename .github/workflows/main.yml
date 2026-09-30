@@ -8,15 +8,15 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.19.6'
-      
-      - name: Fix Everything
+      - name: Fix Everything Auto Package
         run: |
           sed -i 's/^name: .*/name: fns_trader_s/' pubspec.yaml
           cp android/app/google-services.json /tmp/g.json || true
           rm -rf android
           flutter create . --platforms=android --project-name fns_trader_s --org com.fns.traders
           cp /tmp/g.json android/app/google-services.json
-          
+          PKG=$(python3 -c "import json; data=json.load(open('/tmp/g.json')); print(data['client'][0]['client_info']['android_client_info']['package_name'])")
+          echo "Firebase Package Found: $PKG"
           cat > android/build.gradle <<'ENDOFFILE'
           buildscript {
               ext.kotlin_version = '1.9.22'
@@ -32,8 +32,7 @@ jobs:
           subprojects { project.evaluationDependsOn(":app") }
           tasks.register("clean", Delete) { delete rootProject.buildDir }
           ENDOFFILE
-
-          cat > android/app/build.gradle <<'ENDOFFILE'
+          cat > android/app/build.gradle <<EOF
           def localProperties = new Properties()
           def localPropertiesFile = rootProject.file('local.properties')
           if (localPropertiesFile.exists()) {
@@ -44,27 +43,24 @@ jobs:
           def flutterVersionName = localProperties.getProperty('flutter.versionName')
           if (flutterVersionName == null) { flutterVersionName = '1.0' }
           def flutterRoot = localProperties.getProperty('flutter.sdk')
-          if (flutterRoot == null) {
-              flutterRoot = System.getenv('FLUTTER_ROOT')
-          }
+          if (flutterRoot == null) { flutterRoot = System.getenv('FLUTTER_ROOT') }
           apply plugin: 'com.android.application'
           apply plugin: 'kotlin-android'
-          apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+          apply from: "\$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
           apply plugin: 'com.google.gms.google-services'
           android {
-              namespace "com.fns.traders"
+              namespace "$PKG"
               compileSdkVersion 34
               ndkVersion flutter.ndkVersion
               compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
               kotlinOptions { jvmTarget = '1.8' }
               sourceSets { main.java.srcDirs += 'src/main/kotlin' }
-              defaultConfig { applicationId "com.fns.traders"; minSdkVersion 21; targetSdkVersion 34; versionCode flutterVersionCode.toInteger(); versionName flutterVersionName }
+              defaultConfig { applicationId "$PKG"; minSdkVersion 21; targetSdkVersion 34; versionCode flutterVersionCode.toInteger(); versionName flutterVersionName }
               buildTypes { release { signingConfig signingConfigs.debug } }
           }
           flutter { source '../..' }
           dependencies {}
-          ENDOFFILE
-
+          EOF
       - run: flutter pub get
       - run: flutter build apk --release -t lib/main.dart
       - run: mv build/app/outputs/flutter-apk/app-release.apk build/admin.apk
