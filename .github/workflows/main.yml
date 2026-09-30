@@ -9,24 +9,97 @@ jobs:
         with:
           flutter-version: '3.19.6'
       
-      - name: Migrate to V2 Embedding
+      - name: Fix V2 Embedding + Firebase
         run: |
-          cp android/app/google-services.json /tmp/g.json || echo "no json"
+          cp android/app/google-services.json /tmp/g.json || true
           rm -rf android
-          flutter create . --platforms=android --org com.fns.traders --project-name fns_trader_s
-          cp /tmp/g.json android/app/google-services.json || echo "restore failed"
-          # Add google-services plugin
-          echo "Applying Firebase fix..."
-          sed -i "s/id \"dev.flutter.flutter-gradle-plugin\"/id \"dev.flutter.flutter-gradle-plugin\"\n    id \"com.google.gms.google-services\"/" android/app/build.gradle
-          sed -i "s/com.android.tools.build:gradle:8.3.0/com.android.tools.build:gradle:7.3.0/" android/build.gradle
-          grep -q "google-services" android/build.gradle || sed -i "/dependencies {/a \        classpath 'com.google.gms:google-services:4.4.1'" android/build.gradle
+          flutter create . --platforms=android
+          cp /tmp/g.json android/app/google-services.json
+          
+          cat > android/build.gradle <<'EOF'
+          buildscript {
+              ext.kotlin_version = '1.9.22'
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+                  classpath 'com.google.gms:google-services:4.4.1'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.buildDir = "../build"
+          subprojects {
+              project.buildDir = "${rootProject.buildDir}/${project.name}"
+          }
+          subprojects {
+              project.evaluationDependsOn(":app")
+          }
+          tasks.register("clean", Delete) {
+              delete rootProject.buildDir
+          }
+          EOF
+
+          cat > android/app/build.gradle <<'EOF'
+          def localProperties = new Properties()
+          def localPropertiesFile = rootProject.file('local.properties')
+          if (localPropertiesFile.exists()) {
+              localPropertiesFile.withReader('UTF-8') { localProperties.load(it) }
+          }
+          def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+          if (flutterVersionCode == null) { flutterVersionCode = '1' }
+          def flutterVersionName = localProperties.getProperty('flutter.versionName')
+          if (flutterVersionName == null) { flutterVersionName = '1.0' }
+          
+          apply plugin: 'com.android.application'
+          apply plugin: 'kotlin-android'
+          apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+          apply plugin: 'com.google.gms.google-services'
+          
+          android {
+              namespace "com.fns.traders"
+              compileSdkVersion 34
+              ndkVersion flutter.ndkVersion
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+              kotlinOptions {
+                  jvmTarget = '1.8'
+              }
+              sourceSets {
+                  main.java.srcDirs += 'src/main/kotlin'
+              }
+              defaultConfig {
+                  applicationId "com.fns.traders"
+                  minSdkVersion 21
+                  targetSdkVersion 34
+                  versionCode flutterVersionCode.toInteger()
+                  versionName flutterVersionName
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.debug
+                  }
+              }
+          }
+          flutter {
+              source '../..'
+          }
+          dependencies {}
+          EOF
 
       - run: flutter pub get
       - run: flutter build apk --release -t lib/main.dart
       - run: mv build/app/outputs/flutter-apk/app-release.apk build/admin.apk
       - run: flutter build apk --release -t lib/main_customer.dart
       - run: mv build/app/outputs/flutter-apk/app-release.apk build/customer.apk
-      
       - uses: actions/upload-artifact@v4
         with:
           name: admin-apk
