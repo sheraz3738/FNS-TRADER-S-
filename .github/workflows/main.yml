@@ -1,4 +1,4 @@
-name: Build FNS APKs Final Fix
+name: Build FNS Final
 on: push
 jobs:
   build:
@@ -8,85 +8,14 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.19.6'
-
-      - name: Force Fix White Screen
-        run: |
+      - run: |
           sed -i 's/^name: .*/name: fns_trader_s/' pubspec.yaml
-          rm -rf android
-          flutter create . --platforms=android --project-name fns_trader_s --org com.fns.traders
-          
-          python3 << 'PY'
-          import pathlib
-          for path in ["lib/main.dart", "lib/main_customer.dart"]:
-              p = pathlib.Path(path)
-              if not p.exists(): continue
-              lines = p.read_text().splitlines()
-              new_lines = []
-              for line in lines:
-                  if "firebase_core" in line: continue
-                  if "firebase_options" in line: continue
-                  if "Firebase.initializeApp" in line: continue
-                  if "DefaultFirebaseOptions" in line: continue
-                  new_lines.append(line)
-              p.write_text("\n".join(new_lines))
-              print(f"Fixed {path}")
-          PY
-
-          cat > android/build.gradle <<'ENDOFFILE'
-          buildscript {
-              ext.kotlin_version = '1.9.22'
-              repositories { google(); mavenCentral() }
-              dependencies {
-                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-              }
-          }
-          allprojects { repositories { google(); mavenCentral() } }
-          rootProject.buildDir = "../build"
-          subprojects { project.buildDir = "${rootProject.buildDir}/${project.name}" }
-          subprojects { project.evaluationDependsOn(":app") }
-          tasks.register("clean", Delete) { delete rootProject.buildDir }
-          ENDOFFILE
-
-          cat > android/app/build.gradle <<'ENDOFFILE'
-          def localProperties = new Properties()
-          def localPropertiesFile = rootProject.file('local.properties')
-          if (localPropertiesFile.exists()) {
-              localPropertiesFile.withReader('UTF-8') { localProperties.load(it) }
-          }
-          def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
-          if (flutterVersionCode == null) { flutterVersionCode = '1' }
-          def flutterVersionName = localProperties.getProperty('flutter.versionName')
-          if (flutterVersionName == null) { flutterVersionName = '1.0' }
-          def flutterRoot = localProperties.getProperty('flutter.sdk')
-          if (flutterRoot == null) { flutterRoot = System.getenv('FLUTTER_ROOT') }
-          apply plugin: 'com.android.application'
-          apply plugin: 'kotlin-android'
-          apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
-          android {
-              namespace "com.fns.traders"
-              compileSdkVersion 34
-              ndkVersion flutter.ndkVersion
-              compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
-              kotlinOptions { jvmTarget = '1.8' }
-              sourceSets { main.java.srcDirs += 'src/main/kotlin' }
-              defaultConfig { applicationId "com.fns.traders"; minSdkVersion 21; targetSdkVersion 34; versionCode flutterVersionCode.toInteger(); versionName flutterVersionName }
-              buildTypes { release { signingConfig signingConfigs.debug } }
-          }
-          flutter { source '../..' }
-          dependencies {}
-          ENDOFFILE
-
+          rm -f android/app/google-services.json || true
       - run: flutter pub get
-      - run: flutter build apk --release -t lib/main.dart
+      - run: flutter build apk --release -t lib/main.dart --no-tree-shake-icons
       - run: mv build/app/outputs/flutter-apk/app-release.apk build/admin.apk
-      - run: flutter build apk --release -t lib/main_customer.dart
-      - run: mv build/app/outputs/flutter-apk/app-release.apk build/customer.apk
-
       - uses: actions/upload-artifact@v4
         with:
           name: admin-apk
           path: build/admin.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: customer-apk
-          path: build/customer.apk
+          compression-level: 0
