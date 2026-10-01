@@ -1,4 +1,4 @@
-name: Build FNS Final
+name: Build FNS Final V2
 on: push
 jobs:
   build:
@@ -8,12 +8,45 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.19.6'
-      - run: |
+
+      - name: Migrate to V2 Embedding
+        run: |
           sed -i 's/^name: .*/name: fns_trader_s/' pubspec.yaml
+          rm -rf android
+          flutter create . --platforms=android --project-name fns_trader_s --org com.fns.traders
           rm -f android/app/google-services.json || true
+
+          cat > android/app/build.gradle <<'ENDOFFILE'
+          def localProperties = new Properties()
+          def localPropertiesFile = rootProject.file('local.properties')
+          if (localPropertiesFile.exists()) { localPropertiesFile.withReader('UTF-8') { localProperties.load(it) } }
+          def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+          if (flutterVersionCode == null) { flutterVersionCode = '1' }
+          def flutterVersionName = localProperties.getProperty('flutter.versionName')
+          if (flutterVersionName == null) { flutterVersionName = '1.0' }
+          def flutterRoot = localProperties.getProperty('flutter.sdk')
+          if (flutterRoot == null) { flutterRoot = System.getenv('FLUTTER_ROOT') }
+          apply plugin: 'com.android.application'
+          apply plugin: 'kotlin-android'
+          apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+          android {
+              namespace "com.fns.traders"
+              compileSdkVersion 34
+              ndkVersion flutter.ndkVersion
+              compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+              kotlinOptions { jvmTarget = '1.8' }
+              sourceSets { main.java.srcDirs += 'src/main/kotlin' }
+              defaultConfig { applicationId "com.fns.traders"; minSdkVersion 21; targetSdkVersion 34; versionCode flutterVersionCode.toInteger(); versionName flutterVersionName }
+              buildTypes { release { signingConfig signingConfigs.debug } }
+          }
+          flutter { source '../..' }
+          dependencies {}
+          ENDOFFILE
+
       - run: flutter pub get
       - run: flutter build apk --release -t lib/main.dart --no-tree-shake-icons
       - run: mv build/app/outputs/flutter-apk/app-release.apk build/admin.apk
+
       - uses: actions/upload-artifact@v4
         with:
           name: admin-apk
