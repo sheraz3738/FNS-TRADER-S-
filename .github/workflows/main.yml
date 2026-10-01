@@ -1,4 +1,4 @@
-name: Build FNS APKs
+name: Build FNS APKs Final Fix
 on: push
 jobs:
   build:
@@ -9,23 +9,27 @@ jobs:
         with:
           flutter-version: '3.19.6'
 
-      - name: Final Fix and Build
+      - name: Force Fix White Screen
         run: |
           sed -i 's/^name: .*/name: fns_trader_s/' pubspec.yaml
           rm -rf android
           flutter create . --platforms=android --project-name fns_trader_s --org com.fns.traders
           
-          # Dart file ko auto fix taake white screen na aaye
           python3 << 'PY'
-          import pathlib, re
+          import pathlib
           for path in ["lib/main.dart", "lib/main_customer.dart"]:
               p = pathlib.Path(path)
               if not p.exists(): continue
-              text = p.read_text()
-              # Firebase initialize ko try-catch me daal do
-              text = text.replace("await Firebase.initializeApp();", "try { await Firebase.initializeApp(); } catch (e) { print('Firebase skipped'); }")
-              text = text.replace("await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);", "try { await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform); } catch (e) { print('Firebase skipped'); }")
-              p.write_text(text)
+              lines = p.read_text().splitlines()
+              new_lines = []
+              for line in lines:
+                  if "firebase_core" in line: continue
+                  if "firebase_options" in line: continue
+                  if "Firebase.initializeApp" in line: continue
+                  if "DefaultFirebaseOptions" in line: continue
+                  new_lines.append(line)
+              p.write_text("\n".join(new_lines))
+              print(f"Fixed {path}")
           PY
 
           cat > android/build.gradle <<'ENDOFFILE'
