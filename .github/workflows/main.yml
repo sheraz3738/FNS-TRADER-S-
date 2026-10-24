@@ -34,14 +34,88 @@ jobs:
           cp -r temp_project/android android
           rm -rf temp_project
 
-      - name: Update Android Kotlin configuration
+      - name: Update Kotlin plugin version
+        shell: bash
         run: |
-          sed -i 's/2\.1\.0/2.3.0/g' android/settings.gradle.kts 2>/dev/null || true
-          sed -i 's/2\.1\.0/2.3.0/g' android/settings.gradle 2>/dev/null || true
-          sed -i 's/2\.2\.0/2.3.0/g' android/settings.gradle.kts 2>/dev/null || true
-          sed -i 's/2\.2\.0/2.3.0/g' android/settings.gradle 2>/dev/null || true
-          sed -i 's/jvmTarget = JavaVersion.VERSION_11.toString()/jvmTarget = "11"/' android/app/build.gradle.kts
-          sed -i 's/jvmTarget = JavaVersion.VERSION_17.toString()/jvmTarget = "17"/' android/app/build.gradle.kts
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          candidates = [
+              Path("android/settings.gradle.kts"),
+              Path("android/settings.gradle")
+          ]
+
+          settings = next((p for p in candidates if p.exists()), None)
+
+          if settings is None:
+              raise SystemExit("Android Gradle settings file not found")
+
+          s = settings.read_text()
+          s = re.sub(
+              r'(?m)(id\(["\']org\.jetbrains\.kotlin\.android["\']\)\s+version\s+)["\'][^"\']+["\']',
+              r'\g<1>"2.3.0"',
+              s
+          )
+          s = re.sub(
+              r'(?m)(id\(["\']org\.jetbrains\.kotlin\.android["\'],\s*version\s*=\s*)["\'][^"\']+["\']',
+              r'\g<1>"2.3.0"',
+              s
+          )
+          settings.write_text(s)
+          print(settings.read_text())
+          PY
+
+      - name: Migrate Kotlin compiler options
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("android/app/build.gradle.kts")
+          s = p.read_text()
+
+          matches = list(re.finditer(r'(?m)^[ \t]*kotlinOptions[ \t]*\{', s))
+
+          for m in reversed(matches):
+              start = m.start()
+              brace = s.find("{", m.start())
+              depth = 0
+              end = None
+
+              for i in range(brace, len(s)):
+                  if s[i] == "{":
+                      depth += 1
+                  elif s[i] == "}":
+                      depth -= 1
+                      if depth == 0:
+                          end = i + 1
+                          break
+
+              if end is None:
+                  raise SystemExit("Could not safely remove kotlinOptions block")
+
+              s = s[:start] + s[end:]
+
+          s = re.sub(r'\n{3,}', '\n\n', s)
+
+          compiler = """
+          kotlin {
+              compilerOptions {
+                  jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+              }
+          }
+          """
+
+          s = s.rstrip() + "\n\n" + compiler.strip() + "\n"
+          p.write_text(s)
+
+          if "kotlinOptions" in s:
+              raise SystemExit("Old kotlinOptions setting still exists")
+
+          print(p.read_text())
+          PY
 
       - name: Enable AndroidX
         run: |
@@ -51,6 +125,12 @@ jobs:
       - name: Set app name
         run: |
           sed -i 's/android:label="[^"]*"/android:label="FNS TRADERS"/' android/app/src/main/AndroidManifest.xml
+
+      - name: Check required files
+        run: |
+          test -f pubspec.yaml
+          test -f lib/main_customer.dart
+          grep -n "kotlinOptions\|compilerOptions\|jvmTarget" android/app/build.gradle.kts || true
 
       - name: Get dependencies
         run: flutter pub get
