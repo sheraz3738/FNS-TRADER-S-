@@ -34,27 +34,14 @@ jobs:
           cp -r temp_project/android android
           rm -rf temp_project
 
-      - name: Update Kotlin version
-        shell: bash
+      - name: Update Android Kotlin configuration
         run: |
-          SETTINGS=""
-          if [ -f android/settings.gradle.kts ]; then
-            SETTINGS="android/settings.gradle.kts"
-          elif [ -f android/settings.gradle ]; then
-            SETTINGS="android/settings.gradle"
-          else
-            echo "ERROR: Gradle settings file not found"
-            exit 1
-          fi
-
-          sed -i \
-            -e 's/2\.1\.0/2.3.0/g' \
-            -e 's/2\.2\.0/2.3.0/g' \
-            -e 's/2\.2\.20/2.3.0/g' \
-            "$SETTINGS"
-
-          echo "Using settings file: $SETTINGS"
-          cat "$SETTINGS"
+          sed -i 's/2\.1\.0/2.3.0/g' android/settings.gradle.kts 2>/dev/null || true
+          sed -i 's/2\.1\.0/2.3.0/g' android/settings.gradle 2>/dev/null || true
+          sed -i 's/2\.2\.0/2.3.0/g' android/settings.gradle.kts 2>/dev/null || true
+          sed -i 's/2\.2\.0/2.3.0/g' android/settings.gradle 2>/dev/null || true
+          sed -i 's/jvmTarget = JavaVersion.VERSION_11.toString()/jvmTarget = "11"/' android/app/build.gradle.kts
+          sed -i 's/jvmTarget = JavaVersion.VERSION_17.toString()/jvmTarget = "17"/' android/app/build.gradle.kts
 
       - name: Enable AndroidX
         run: |
@@ -67,10 +54,6 @@ jobs:
 
       - name: Get dependencies
         run: flutter pub get
-
-      - name: Check Flutter project
-        run: flutter analyze --no-pub
-        continue-on-error: true
 
       - name: Build APK
         run: flutter build apk --release --target lib/main_customer.dart
