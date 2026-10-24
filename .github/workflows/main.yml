@@ -1,56 +1,64 @@
-
 name: Build FNS TRADER'S APK
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
+workflow_dispatch:
+push:
+branches:
+- main
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+build:
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+steps:
+  - name: Checkout repository
+    uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+  - name: Setup Java
+    uses: actions/setup-java@v4
+    with:
+      distribution: temurin
+      java-version: '17'
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.35.0'
-          channel: stable
+  - name: Setup Flutter
+    uses: subosito/flutter-action@v2
+    with:
+      flutter-version: '3.35.0'
+      channel: stable
 
-      - name: Create fresh Android project
-        run: |
-          flutter create --platforms=android --org com.fnstraders temp_project
-          rm -rf android
-          cp -r temp_project/android android
-          rm -rf temp_project
+  - name: Create fresh Android project
+    run: |
+      flutter create --platforms=android --org com.fnstraders temp_project
+      rm -rf android
+      cp -r temp_project/android android
+      rm -rf temp_project
 
-      - name: Enable AndroidX
-        run: |
-          echo "android.useAndroidX=true" >> android/gradle.properties
-          echo "android.enableJetifier=true" >> android/gradle.properties
+  - name: Update Kotlin version
+    run: |
+      sed -i 's/version "2.1.0"/version "2.3.0"/g' android/settings.gradle
+      sed -i "s/version '2.1.0'/version '2.3.0'/g" android/settings.gradle
 
-      - name: Set app name
-        run: |
-          sed -i 's/android:label="[^"]*"/android:label="FNS TRADER'\''S"/' android/app/src/main/AndroidManifest.xml
+  - name: Enable AndroidX
+    run: |
+      if ! grep -q '^android.useAndroidX=' android/gradle.properties; then
+        echo 'android.useAndroidX=true' >> android/gradle.properties
+      fi
+      if ! grep -q '^android.enableJetifier=' android/gradle.properties; then
+        echo 'android.enableJetifier=true' >> android/gradle.properties
+      fi
 
-      - name: Get dependencies
-        run: flutter pub get
+  - name: Set app name
+    run: |
+      sed -i 's/android:label="[^"]*"/android:label="FNS TRADER'\''S"/' android/app/src/main/AndroidManifest.xml
 
-      - name: Build APK
-        run: flutter build apk --release --target lib/main_customer.dart
+  - name: Get dependencies
+    run: flutter pub get
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: FNS-TRADERS-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
+  - name: Build APK
+    run: flutter build apk --release --target lib/main_customer.dart
+
+  - name: Upload APK
+    uses: actions/upload-artifact@v4
+    with:
+      name: FNS-TRADERS-APK
+      path: build/app/outputs/flutter-apk/app-release.apk
