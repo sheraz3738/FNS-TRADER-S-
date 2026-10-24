@@ -15,40 +15,38 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.35.0'
           channel: stable
 
+      - name: Create fresh Android project
+        run: |
+          flutter create --platforms=android --org com.fnstraders temp_project
+          rm -rf android
+          cp -r temp_project/android android
+          rm -rf temp_project
+
       - name: Enable AndroidX
         run: |
-          mkdir -p android
-          if [ ! -f android/gradle.properties ]; then
-            touch android/gradle.properties
-          fi
-          grep -qxF 'android.useAndroidX=true' android/gradle.properties || echo 'android.useAndroidX=true' >> android/gradle.properties
-          grep -qxF 'android.enableJetifier=true' android/gradle.properties || echo 'android.enableJetifier=true' >> android/gradle.properties
+          echo "android.useAndroidX=true" >> android/gradle.properties
+          echo "android.enableJetifier=true" >> android/gradle.properties
 
-      - name: Create Android project files if missing
+      - name: Set app name
         run: |
-          if [ ! -d android/app ]; then
-            flutter create --platforms=android temp_project
-            cp -r temp_project/android .
-            rm -rf temp_project
-          fi
+          sed -i 's/android:label="[^"]*"/android:label="FNS TRADER'\''S"/' android/app/src/main/AndroidManifest.xml
 
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Build customer APK
-        run: flutter build apk --release --target lib/main_customer.dart
-
-      - name: Set app name
-        run: |
-          sed -i 's/android:label="[^"]*"/android:label="FNS TRADER'\\''S"/' android/app/src/main/AndroidManifest.xml
-
-      - name: Rebuild APK with app name
+      - name: Build APK
         run: flutter build apk --release --target lib/main_customer.dart
 
       - name: Upload APK
