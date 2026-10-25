@@ -36,6 +36,36 @@ jobs:
           cp -r temp_project/android android
           rm -rf temp_project
 
+      - name: Set Kotlin plugin version
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("android/settings.gradle")
+          if not p.exists():
+              p = Path("android/settings.gradle.kts")
+
+          if not p.exists():
+              raise SystemExit("Android settings file not found")
+
+          s = p.read_text()
+
+          pattern = r'(id\(["\']org\.jetbrains\.kotlin\.android["\']\)\s+version\s+)["\'][^"\']+["\']'
+          s, count = re.subn(pattern, r'\g<1>"2.3.0"', s)
+
+          if count == 0:
+              pattern = r'(id\(["\']org\.jetbrains\.kotlin\.android["\']\s*,\s*version\s*=\s*)["\'][^"\']+["\']'
+              s, count = re.subn(pattern, r'\g<1>"2.3.0"', s)
+
+          if count == 0:
+              raise SystemExit("Could not update Kotlin plugin version")
+
+          p.write_text(s)
+          print(s)
+          PY
+
       - name: Enable AndroidX
         run: |
           grep -q '^android.useAndroidX=' android/gradle.properties || echo 'android.useAndroidX=true' >> android/gradle.properties
@@ -44,6 +74,12 @@ jobs:
       - name: Set app name
         run: |
           sed -i 's/android:label="[^"]*"/android:label="FNS TRADERS"/' android/app/src/main/AndroidManifest.xml
+
+      - name: Check required files
+        run: |
+          test -f pubspec.yaml
+          test -f lib/main_customer.dart
+          test -f fns_logo.png
 
       - name: Get dependencies
         run: flutter pub get
@@ -64,6 +100,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          if gh release view customer-apk --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release delete customer-apk --repo "$GH_REPO" --yes
+          fi
+
           gh release create customer-apk \
             build/app/outputs/flutter-apk/app-release.apk \
             --repo "$GH_REPO" \
