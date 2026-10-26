@@ -69,10 +69,9 @@ jobs:
 
           p.write_text(s)
           print("Kotlin plugin version updated.")
-
           PY
 
-      - name: Fix Kotlin JVM target
+      - name: Fix Kotlin compiler options
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -81,21 +80,32 @@ jobs:
           p = Path("android/app/build.gradle.kts")
           s = p.read_text()
 
-          s = re.sub(
-              r'jvmTarget\s*=\s*JavaVersion\.VERSION_11\.toString\(\)',
-              'jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11',
-              s
-          )
+          pattern = r'(?ms)^[ \t]*kotlinOptions\s*\{\s*jvmTarget\s*=\s*JavaVersion\.VERSION_(11|17)\.toString\(\)\s*\}\s*'
+          matches = list(re.finditer(pattern, s))
 
-          s = re.sub(
-              r'jvmTarget\s*=\s*JavaVersion\.VERSION_17\.toString\(\)',
-              'jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17',
-              s
-          )
+          if not matches:
+              raise SystemExit("Could not find the old kotlinOptions block")
+
+          targets = [m.group(1) for m in matches]
+          s = re.sub(pattern, "", s)
+
+          target = "17" if "17" in targets else "11"
+
+          if not re.search(r'(?m)^kotlin\s*\{', s):
+              s += (
+                  "\n\nkotlin {\n"
+                  "    compilerOptions {\n"
+                  f"        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_{target})\n"
+                  "    }\n"
+                  "}\n"
+              )
+          else:
+              raise SystemExit(
+                  "A top-level kotlin block already exists; refusing to add a duplicate."
+              )
 
           p.write_text(s)
-          print("Kotlin JVM target updated.")
-
+          print(f"Updated Kotlin compilerOptions to JVM {target}.")
           PY
 
       - name: Enable AndroidX
