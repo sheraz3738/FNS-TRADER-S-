@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'print_service.dart';
 
 class AdminScreen extends StatefulWidget {
   @override State<AdminScreen> createState() => _AdminScreenState();
@@ -62,6 +61,31 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
+  Future<void> _editProduct(String id, Map<String, dynamic> data) async {
+    final name = TextEditingController(text: data['name']?.toString() ?? '');
+    final price = TextEditingController(text: data['price']?.toString() ?? '');
+    final stock = TextEditingController(text: data['stock']?.toString() ?? '');
+    final image = TextEditingController(text: data['imageUrl']?.toString() ?? '');
+    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Edit product'),
+      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+        TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Price')),
+        TextField(controller: stock, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stock')),
+        TextField(controller: image, decoration: const InputDecoration(labelText: 'Image URL')),
+      ])),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save'))],
+    ));
+    if (ok == true && name.text.trim().isNotEmpty && int.tryParse(price.text) != null && int.tryParse(stock.text) != null) {
+      await FirebaseFirestore.instance.collection('products').doc(id).update({
+        'name': name.text.trim(), 'price': int.parse(price.text), 'stock': int.parse(stock.text),
+        'imageUrl': image.text.trim(), 'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+    name.dispose(); price.dispose(); stock.dispose(); image.dispose();
+  }
+
   @override Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFFF5F5F5),
@@ -91,7 +115,7 @@ class _AdminScreenState extends State<AdminScreen> {
                         leading: Icon(Icons.medication),
                         title: Text(p['name'] ?? '', style: TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text("Rs. ${p['price'] ?? ''} | Stock: ${p['stock'] ?? ''}"),
-                        trailing: IconButton(icon: Icon(Icons.edit, color: Colors.blue), onPressed: () {}),
+                        trailing: IconButton(icon: Icon(Icons.edit, color: Colors.blue), onPressed: () => _editProduct(docs[i].id, Map<String, dynamic>.from(p))),
                       ),
                     );
                   },
@@ -99,15 +123,7 @@ class _AdminScreenState extends State<AdminScreen> {
               },
             ),
           ),
-          // ADMIN PRINT BUTTONS
-          Padding(
-            padding: EdgeInsets.all(10),
-            child: Row(children: [
-              Expanded(child: ElevatedButton(child: Text("A4 Print"), onPressed: () { PrintService.printA4(); })),
-              SizedBox(width: 10),
-              Expanded(child: ElevatedButton(child: Text("Thermal 80mm"), style: ElevatedButton.styleFrom(backgroundColor: Colors.black87), onPressed: () { PrintService.printThermal(); })),
-            ]),
-          )
+
         ],
       ),
     );
