@@ -117,6 +117,14 @@ jobs:
       - name: Build Admin APK
         run: flutter build apk --release --target lib/main_admin.dart
 
+      - name: Verify APK is complete and valid
+        run: |
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$APK"
+          ls -lh "$APK"
+          unzip -t "$APK"
+          sha256sum "$APK"
+
       - name: Upload Admin APK artifact
         uses: actions/upload-artifact@v4
         with:
