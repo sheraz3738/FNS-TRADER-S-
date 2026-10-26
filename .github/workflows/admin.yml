@@ -97,6 +97,22 @@ jobs:
           print("Admin applicationId and namespace set to com.fnstraders.admin")
           PY
 
+      - name: Fix MainActivity package for Admin app
+        shell: bash
+        run: |
+          set -e
+          SRC=$(find android/app/src/main/kotlin -name MainActivity.kt -o -path '*/java/*/MainActivity.java' | head -n 1)
+          test -n "$SRC"
+          mkdir -p android/app/src/main/kotlin/com/fnstraders/admin
+          cat > android/app/src/main/kotlin/com/fnstraders/admin/MainActivity.kt <<'EOF'
+          package com.fnstraders.admin
+
+          import io.flutter.embedding.android.FlutterActivity
+
+          class MainActivity : FlutterActivity()
+          EOF
+          rm -f "$SRC"
+
       - name: Configure AndroidX and app label
         run: |
           grep -q '^android.useAndroidX=' android/gradle.properties || echo 'android.useAndroidX=true' >> android/gradle.properties
