@@ -1,0 +1,113 @@
+name: Build FNS TRADERS Admin APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build-admin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: stable
+
+      - name: Create Android project files
+        run: |
+          flutter create --platforms=android --org com.fnstraders temp_project
+          rm -rf android
+          cp -r temp_project/android android
+          rm -rf temp_project
+
+      - name: Configure Kotlin plugin
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("android/settings.gradle")
+          if not p.exists(): p = Path("android/settings.gradle.kts")
+          s = p.read_text()
+          patterns = [
+            r'(id\(["\']org\.jetbrains\.kotlin\.android["\']\)\s+version\s+)["\'][^"\']+["\']',
+            r'(id\s+["\']org\.jetbrains\.kotlin\.android["\']\s+version\s+)["\'][^"\']+["\']',
+            r'(id\(["\']org\.jetbrains\.kotlin\.android["\']\s*,\s*version\s*=\s*)["\'][^"\']+["\']'
+          ]
+          for pat in patterns:
+            s, n = re.subn(pat, r'\g<1>"2.3.0"', s)
+            if n: break
+          if not n: raise SystemExit("Could not update Kotlin plugin version")
+          p.write_text(s)
+          PY
+
+      - name: Fix Kotlin compiler options
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("android/app/build.gradle.kts")
+          s = p.read_text()
+          pattern = r'(?ms)^[ \t]*kotlinOptions\s*\{\s*jvmTarget\s*=\s*JavaVersion\.VERSION_(11|17)\.toString\(\)\s*\}\s*'
+          matches = list(re.finditer(pattern, s))
+          if not matches: raise SystemExit("Could not find old kotlinOptions block")
+          targets = [m.group(1) for m in matches]
+          s = re.sub(pattern, "", s)
+          target = "17" if "17" in targets else "11"
+          if re.search(r'(?m)^kotlin\s*\{', s): raise SystemExit("Kotlin block already exists")
+          s += "\n\nkotlin {\n    compilerOptions {\n        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_" + target + ")\n    }\n}\n"
+          p.write_text(s)
+          PY
+
+      - name: Configure AndroidX and app label
+        run: |
+          grep -q '^android.useAndroidX=' android/gradle.properties || echo 'android.useAndroidX=true' >> android/gradle.properties
+          grep -q '^android.enableJetifier=' android/gradle.properties || echo 'android.enableJetifier=true' >> android/gradle.properties
+          sed -i 's/android:label="[^"]*"/android:label="FNS TRADERS Admin"/' android/app/src/main/AndroidManifest.xml
+
+      - name: Check required files
+        run: |
+          test -f pubspec.yaml
+          test -f lib/main_admin.dart
+          test -f lib/admin_screen.dart
+          test -f lib/firebase_options.dart
+          test -f fns_logo.png
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Admin APK
+        run: flutter build apk --release --target lib/main_admin.dart
+
+      - name: Upload Admin APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FNS-TRADERS-ADMIN-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Publish Admin APK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view admin-apk --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release delete admin-apk --repo "$GH_REPO" --yes
+          fi
+          gh release create admin-apk build/app/outputs/flutter-apk/app-release.apk --repo "$GH_REPO" --title "FNS TRADERS Admin APK" --notes "Separate FNS TRADERS Admin Android App" --latest=false
