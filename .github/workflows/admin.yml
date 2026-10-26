@@ -117,6 +117,20 @@ jobs:
       - name: Build Admin APK
         run: flutter build apk --release --target lib/main_admin.dart
 
+      - name: Sign Admin APK for Android installation
+        run: |
+          set -e
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          KEYSTORE="$HOME/.android/debug.keystore"
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$KEYSTORE" ]; then
+            keytool -genkeypair -v -keystore "$KEYSTORE" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)
+          test -x "$APKSIGNER"
+          "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass pass:android --ks-key-alias androiddebugkey --key-pass pass:android "$APK"
+          "$APKSIGNER" verify --verbose "$APK"
+
       - name: Verify APK is complete and valid
         run: |
           APK=build/app/outputs/flutter-apk/app-release.apk
