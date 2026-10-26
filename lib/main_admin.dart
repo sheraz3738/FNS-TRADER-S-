@@ -30,7 +30,7 @@ class AdminAuthGate extends StatelessWidget {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
-      if (snapshot.hasData) return const AdminScreen();
+      if (snapshot.hasData) return AdminScreen();
       return const AdminLoginScreen();
     },
   );
