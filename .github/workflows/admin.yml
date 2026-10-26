@@ -83,14 +83,14 @@ jobs:
           p = Path("android/app/build.gradle.kts")
           if p.exists():
             s = p.read_text()
-            s, n1 = re.subn(r'applicationId\\s*=\\s*"[^"]+"', 'applicationId = "com.fnstraders.admin"', s, count=1)
-            s, n2 = re.subn(r'namespace\\s*=\\s*"[^"]+"', 'namespace = "com.fnstraders.admin"', s, count=1)
+            s, n1 = re.subn(r'applicationId\s*=\s*"[^"]+"', 'applicationId = "com.fnstraders.admin"', s, count=1)
+            s, n2 = re.subn(r'namespace\s*=\s*"[^"]+"', 'namespace = "com.fnstraders.admin"', s, count=1)
           else:
             p = Path("android/app/build.gradle")
             if not p.exists(): raise SystemExit("Android app Gradle file not found")
             s = p.read_text()
-            s, n1 = re.subn(r'applicationId\\s+["\'][^"\']+["\']', 'applicationId "com.fnstraders.admin"', s, count=1)
-            s, n2 = re.subn(r'namespace\\s+["\'][^"\']+["\']', 'namespace "com.fnstraders.admin"', s, count=1)
+            s, n1 = re.subn(r'applicationId\s+["\'][^"\']+["\']', 'applicationId "com.fnstraders.admin"', s, count=1)
+            s, n2 = re.subn(r'namespace\s+["\'][^"\']+["\']', 'namespace "com.fnstraders.admin"', s, count=1)
           if not n1: raise SystemExit("Could not set Admin applicationId")
           if not n2: raise SystemExit("Could not set Admin namespace")
           p.write_text(s)
