@@ -6,8 +6,40 @@ import 'admin_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const FnsAdminApp());
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    runApp(const FnsAdminApp());
+  } catch (e) {
+    runApp(AdminStartupError(error: e.toString()));
+  }
+}
+
+class AdminStartupError extends StatelessWidget {
+  final String error;
+  const AdminStartupError({super.key, required this.error});
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: Scaffold(
+      appBar: AppBar(title: const Text('FNS TRADERS Admin')),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 56),
+              const Text('App startup error', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              const Text('Firebase start nahi ho saka. Neeche error likha hai:'),
+              const SizedBox(height: 12),
+              SelectableText(error),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class FnsAdminApp extends StatelessWidget {
