@@ -260,11 +260,19 @@ class _AdminScreenState extends State<AdminScreen> {
     TextButton(onPressed:()=>FirebaseAuth.instance.signOut(),child:const Text('Log out')),
   ])));
 
+  Widget settingsTab()=>ListView(padding:const EdgeInsets.all(16),children:[
+    const ListTile(leading:Icon(Icons.store,color:Colors.blue),title:Text('FNS TRADERS'),subtitle:Text('Admin settings')),
+    const ListTile(leading:Icon(Icons.location_on,color:Colors.blue),title:Text('Business address'),subtitle:Text('Plot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi')),
+    const ListTile(leading:Icon(Icons.phone,color:Colors.green),title:Text('Contact'),subtitle:Text('0334-3738405')),
+    const ListTile(leading:Icon(Icons.image,color:Colors.blue),title:Text('Product details'),subtitle:Text('Add Product mein name, retail price, stock aur gallery picture set karein.')),
+    FilledButton.icon(onPressed:()=>FirebaseAuth.instance.signOut(),icon:const Icon(Icons.logout),label:const Text('Log out')),
+  ]);
+
   @override Widget build(BuildContext context)=>Scaffold(
     backgroundColor:const Color(0xFFF5F5F5),
     body:SafeArea(child:Column(children:[
       header(),
-      Expanded(child:IndexedStack(index:tab,children:[productsTab(),billingTab(),backupTab()])),
+      Expanded(child:IndexedStack(index:tab,children:[productsTab(),billingTab(),backupTab(),settingsTab()])),
     ])),
     floatingActionButton: tab == 0
       ? FloatingActionButton.extended(
@@ -277,6 +285,7 @@ class _AdminScreenState extends State<AdminScreen> {
       NavigationDestination(icon:Icon(Icons.inventory_2),label:'Products'),
       NavigationDestination(icon:Icon(Icons.receipt_long),label:'Billing'),
       NavigationDestination(icon:Icon(Icons.backup),label:'Backup'),
+      NavigationDestination(icon:Icon(Icons.settings),label:'Settings'),
     ]),
   );
 }
