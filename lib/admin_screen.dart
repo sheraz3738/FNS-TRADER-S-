@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -18,6 +19,24 @@ class AdminScreen extends StatefulWidget {
 class _AdminScreenState extends State<AdminScreen> {
   int tab = 0;
   String search = '';
+  final ScrollController welcomeController = ScrollController();
+  Timer? welcomeTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    welcomeTimer = Timer.periodic(const Duration(milliseconds: 35), (_) {
+      if (!welcomeController.hasClients) return;
+      final max = welcomeController.position.maxScrollExtent;
+      if (max <= 0) return;
+      if (welcomeController.offset >= max) {
+        welcomeController.jumpTo(0);
+      } else {
+        welcomeController.jumpTo(welcomeController.offset + 1);
+      }
+    });
+  }
+
   final cart = <String, Map<String, dynamic>>{};
   final customer = TextEditingController();
   final phone = TextEditingController();
@@ -26,21 +45,26 @@ class _AdminScreenState extends State<AdminScreen> {
   bool busy = false;
 
   @override void dispose() {
+    welcomeTimer?.cancel();
+    welcomeController.dispose();
     customer.dispose(); phone.dispose(); address.dispose(); discount.dispose(); super.dispose();
   }
 
   Widget header() => Column(children: [
-    Container(width: double.infinity, color: const Color(0xFF0D47A1), padding: const EdgeInsets.all(8),
-      child: const Text("BABA FALAK NAZ & SONS TRADERS | FNS TRADERS", textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-    Container(width: double.infinity, color: Colors.green.shade700, padding: const EdgeInsets.all(8),
-      child: const Text("مَا شَاءَ اللّٰهُ لَا قُوَّةَ إِلَّا بِاللّٰهِ", textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-    const Padding(padding: EdgeInsets.all(10), child: Row(children: [
-      Text('FNS', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic)),
-      SizedBox(width: 12), Expanded(child: Text("BABA FALAK NAZ & SONS TRADERS\nPlot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi\n0334-3738405",
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
-    ])),
+    Container(height:44,width:double.infinity,color:Colors.blue.shade800,
+      child:ListView(controller:welcomeController,scrollDirection:Axis.horizontal,physics:const NeverScrollableScrollPhysics(),children:const [
+        Center(child:Padding(padding:EdgeInsets.symmetric(horizontal:16),child:Text(
+          'BABA FALAK NAZ & SONS TRADERS  |  WELCOME TO FNS TRADERS  |  بابا فلک ناز رحمۃ اللّٰہ علیہ اینڈ سنز ٹریڈرز',
+          style:TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.bold))))
+      ])),
+    Container(width:double.infinity,color:Colors.green.shade700,padding:const EdgeInsets.all(8),
+      child:const Text('مَا شَاءَ اللّٰهُ لَا قُوَّةَ إِلَّا بِاللّٰهِ',textAlign:TextAlign.center,
+        style:TextStyle(color:Colors.white,fontWeight:FontWeight.bold))),
+    Card(margin:const EdgeInsets.all(10),elevation:4,clipBehavior:Clip.antiAlias,
+      child:SizedBox(width:double.infinity,height:180,child:Padding(padding:const EdgeInsets.all(6),
+        child:Image.asset('fns_logo.png',fit:BoxFit.contain,
+          errorBuilder:(context,error,stackTrace)=>const Center(child:Text('FNS TRADERS',
+            style:TextStyle(fontSize:34,fontWeight:FontWeight.bold,color:Colors.blue))))))),
   ]);
 
   Future<void> productForm({String? id, Map<String,dynamic>? data}) async {
