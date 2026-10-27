@@ -147,31 +147,67 @@ class _AdminScreenState extends State<AdminScreen> {
     } finally { if(mounted) setState(()=>busy=false); }
   }
 
-  Widget productsTab() => Column(children:[
-    Padding(padding:const EdgeInsets.all(10),child:TextField(onChanged:(v)=>setState(()=>search=v),
-      decoration:const InputDecoration(hintText:'Search product...',prefixIcon:Icon(Icons.search),border:OutlineInputBorder()))),
-    Expanded(child:StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(
-      stream:FirebaseFirestore.instance.collection('products').orderBy('name').snapshots(),
-      builder:(context,snap){
-        if(snap.hasError)return Center(child:Text('Products load error: ${snap.error}'));
-        if(!snap.hasData)return const Center(child:CircularProgressIndicator());
-        final docs=snap.data!.docs.where((d)=>(d.data()['name']??'').toString().toLowerCase().contains(search.toLowerCase())).toList();
-        if(docs.isEmpty)return const Center(child:Text('Abhi products nahi hain. + button se add karein.'));
-        return ListView.builder(itemCount:docs.length,itemBuilder:(c,i){
-          final d=docs[i]; final p=d.data(); final url=(p['imageUrl']??'').toString();
-          return Card(child:ListTile(
-            leading: url.isEmpty ? const CircleAvatar(child:Icon(Icons.inventory_2)) : ClipRRect(borderRadius:BorderRadius.circular(8),child:Image.network(url,width:55,height:55,fit:BoxFit.cover,errorBuilder:(_,__,___)=>const Icon(Icons.broken_image))),
-            title:Text((p['name']??'').toString(),style:const TextStyle(fontWeight:FontWeight.bold)),
-            subtitle:Text('Retail: Rs. ${p['price']??0} | Stock: ${p['stock']??0}'),
-            trailing:Wrap(mainAxisSize:MainAxisSize.min,children:[
-              IconButton(tooltip:'Add to bill',icon:const Icon(Icons.add_shopping_cart,color:Colors.green),onPressed:()=>setState(()=>cart.update(d.id,(v)=>{...v,'qty':(v['qty'] as int)+1},ifAbsent:()=>{'name':p['name']??'','price':(p['price'] as num?)?.toInt()??0,'qty':1}))),
-              IconButton(tooltip:'Edit',icon:const Icon(Icons.edit,color:Colors.blue),onPressed:()=>productForm(id:d.id,data:p)),
-            ]),
+  Widget productsTab() => Column(children: [
+    Padding(
+      padding: const EdgeInsets.all(10),
+      child: TextField(
+        onChanged: (v) => setState(() => search = v),
+        decoration: const InputDecoration(
+          hintText: 'Search product...',
+          prefixIcon: Icon(Icons.search),
+          border: OutlineInputBorder(),
+        ),
+      ),
+    ),
+    Expanded(
+      child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance.collection('products').orderBy('name').snapshots(),
+        builder: (context, snap) {
+          if (snap.hasError) return Center(child: Text('Products load error: ${snap.error}'));
+          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          final docs = snap.data!.docs.where((d) =>
+            (d.data()['name'] ?? '').toString().toLowerCase().contains(search.toLowerCase())).toList();
+          if (docs.isEmpty) return const Center(child: Text('Abhi products nahi hain. + button se add karein.'));
+          return ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (c, i) {
+              final d = docs[i];
+              final p = d.data();
+              final url = (p['imageUrl'] ?? '').toString();
+              return Card(
+                child: ListTile(
+                  leading: url.isEmpty
+                    ? const CircleAvatar(child: Icon(Icons.inventory_2))
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(url, width: 55, height: 55, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image)),
+                      ),
+                  title: Text((p['name'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('Retail: Rs. ${p['price'] ?? 0} | Stock: ${p['stock'] ?? 0}'),
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    IconButton(
+                      tooltip: 'Add to bill',
+                      icon: const Icon(Icons.add_shopping_cart, color: Colors.green),
+                      onPressed: () => setState(() => cart.update(
+                        d.id,
+                        (v) => {...v, 'qty': (v['qty'] as int) + 1},
+                        ifAbsent: () => {'name': p['name'] ?? '', 'price': (p['price'] as num?)?.toInt() ?? 0, 'qty': 1},
+                      )),
+                    ),
+                    IconButton(
+                      tooltip: 'Edit',
+                      icon: const Icon(Icons.edit, color: Colors.blue),
+                      onPressed: () => productForm(id: d.id, data: p),
+                    ),
+                  ]),
+                ),
+              );
+            },
           );
-        });
-      })),
-    ]),
-    floatingActionButton:FloatingActionButton.extended(onPressed:()=>productForm(),icon:const Icon(Icons.add),label:const Text('Add product')),
+        },
+      ),
+    ),
   ]);
 
   Widget field(TextEditingController c,String label,{TextInputType? type})=>Padding(padding:const EdgeInsets.only(bottom:8),child:TextField(controller:c,keyboardType:type,decoration:InputDecoration(labelText:label,border:const OutlineInputBorder())));
