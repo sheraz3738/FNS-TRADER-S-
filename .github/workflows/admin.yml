@@ -144,8 +144,20 @@ jobs:
           fi
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)
           test -x "$APKSIGNER"
-          "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass pass:android --ks-key-alias androiddebugkey --key-pass pass:android "$APK"
-          "$APKSIGNER" verify --verbose "$APK"
+          "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass pass:android --ks-key-alias androiddebugkey --key-pass pass:android --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true "$APK"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          APKANALYZER=$(find "$ANDROID_HOME" -type f -name apkanalyzer | sort -V | tail -n 1)
+          if [ -x "$APKANALYZER" ]; then
+            echo "=== APK manifest/package details ==="
+            "$APKANALYZER" manifest application-id "$APK"
+            "$APKANALYZER" manifest min-sdk "$APK"
+            "$APKANALYZER" manifest target-sdk "$APK"
+            "$APKANALYZER" apk summary "$APK"
+          else
+            echo "apkanalyzer not found; using aapt fallback"
+            AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)
+            "$AAPT" dump badging "$APK" | head -n 20
+          fi
 
       - name: Verify APK is complete and valid
         run: |
