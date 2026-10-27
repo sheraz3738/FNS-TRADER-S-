@@ -25,6 +25,9 @@ dependencies:
   pdf: ^3.11.3
   share_plus: ^11.0.0
 
+dependency_overrides:
+  image: 4.5.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
