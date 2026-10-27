@@ -242,6 +242,13 @@ class _AdminScreenState extends State<AdminScreen> {
       header(),
       Expanded(child:IndexedStack(index:tab,children:[productsTab(),billingTab(),backupTab()])),
     ])),
+    floatingActionButton: tab == 0
+      ? FloatingActionButton.extended(
+          onPressed: () => productForm(),
+          icon: const Icon(Icons.add),
+          label: const Text('Add Product'),
+        )
+      : null,
     bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const[
       NavigationDestination(icon:Icon(Icons.inventory_2),label:'Products'),
       NavigationDestination(icon:Icon(Icons.receipt_long),label:'Billing'),
