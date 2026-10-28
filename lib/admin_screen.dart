@@ -264,6 +264,57 @@ class _AdminScreenState extends State<AdminScreen> {
     OutlinedButton.icon(onPressed:busy?null:()=>checkout(true),icon:const Icon(Icons.receipt_long),label:const Text('Save & Print Thermal 80mm')),
   ]);
 
+  Future<void> printCustomerOrder({
+    required String orderId,
+    required Map<String, dynamic> order,
+    required Map<String, dynamic> customerData,
+  }) async {
+    final items = (order['items'] as List?) ?? [];
+    final now = DateTime.now();
+    final pdf = pw.Document();
+    pdf.addPage(pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      build: (_) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Center(child: pw.Text('FNS TRADERS', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold))),
+          pw.Center(child: pw.Text('BABA FALAK NAZ & SONS TRADERS')),
+          pw.Center(child: pw.Text('Plot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi')),
+          pw.Center(child: pw.Text('Phone: 0334-3738405')),
+          pw.Divider(),
+          pw.Text('ORDER BILL', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.Text('Order No: $orderId'),
+          pw.Text('Date: ${now.toString().substring(0, 16)}'),
+          pw.Text('Customer / Shop: ${customerData['shopName'] ?? 'Customer'}'),
+          pw.Text('Mobile: ${customerData['contact'] ?? ''}'),
+          pw.Text('Address: ${customerData['address'] ?? ''}'),
+          pw.SizedBox(height: 12),
+          pw.TableHelper.fromTextArray(
+            headers: ['S.No', 'Product', 'Qty', 'Rate', 'Amount'],
+            data: [
+              for (int i = 0; i < items.length; i++)
+                () {
+                  final m = Map<String, dynamic>.from(items[i] as Map);
+                  final qty = (m['quantity'] ?? m['qty'] ?? 0) as num;
+                  final price = (m['price'] ?? m['rate'] ?? 0) as num;
+                  final amount = (m['amount'] ?? (qty * price)) as num;
+                  return ['${i + 1}', '${m['name'] ?? 'Product'}', '${qty}', 'Rs. ${price}', 'Rs. ${amount}'];
+                }(),
+            ],
+          ),
+          pw.SizedBox(height: 12),
+          pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: pw.Text('TOTAL: Rs. ${order['total'] ?? 0}', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.SizedBox(height: 24),
+          pw.Center(child: pw.Text('Thank you for your order!')),
+        ],
+      ),
+    ));
+    await Printing.layoutPdf(onLayout: (_) async => pdf.save());
+  }
+
   Widget ordersTab() => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
     stream: FirebaseFirestore.instance
         .collection('orders')
@@ -289,44 +340,83 @@ class _AdminScreenState extends State<AdminScreen> {
           final items = (data['items'] as List?) ?? [];
           final itemLines = items.map((item) {
             final m = Map<String, dynamic>.from(item as Map);
-            return '${m['name'] ?? 'Product'} × ${m['quantity'] ?? 0}';
+            return '${m['name'] ?? 'Product'} × ${m['quantity'] ?? m['qty'] ?? 0}';
           }).join('\n');
+          final customerId = (data['customerId'] ?? '').toString();
+          final status = (data['status'] ?? 'Pending').toString();
           return Card(
             child: ListTile(
               onTap: () async {
+                Map<String, dynamic> customerData = {};
+                if (customerId.isNotEmpty) {
+                  try {
+                    final profile = await FirebaseFirestore.instance.collection('customers').doc(customerId).get();
+                    customerData = profile.data() ?? {};
+                  } catch (_) {}
+                }
+                if (!context.mounted) return;
                 await showDialog<void>(
                   context: context,
-                  builder: (dialogContext) => AlertDialog(
-                    title: Text('Order ${doc.id}'),
-                    content: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Customer: ${data['customerEmail'] ?? 'Customer'}'),
-                          const SizedBox(height: 8),
-                          Text('Status: ${data['status'] ?? 'Pending'}'),
-                          Text('Total: Rs. ${data['total'] ?? 0}'),
-                          const SizedBox(height: 12),
-                          const Text('Items', style: TextStyle(fontWeight: FontWeight.bold)),
-                          Text(itemLines.isEmpty ? 'No item details found' : itemLines),
-                        ],
+                  builder: (dialogContext) => StatefulBuilder(
+                    builder: (dialogContext, setDialogState) => AlertDialog(
+                      title: Text('Order ${doc.id}'),
+                      content: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Customer / Shop: ${customerData['shopName'] ?? data['customerName'] ?? 'Customer'}'),
+                            Text('Mobile: ${customerData['contact'] ?? data['customerPhone'] ?? ''}'),
+                            Text('Address: ${customerData['address'] ?? data['customerAddress'] ?? ''}'),
+                            const SizedBox(height: 8),
+                            Text('Status: ${data['status'] ?? 'Pending'}'),
+                            Text('Total: Rs. ${data['total'] ?? 0}'),
+                            const SizedBox(height: 12),
+                            const Text('Items', style: TextStyle(fontWeight: FontWeight.bold)),
+                            Text(itemLines.isEmpty ? 'No item details found' : itemLines),
+                          ],
+                        ),
                       ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: const Text('Close'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            try {
+                              await printCustomerOrder(orderId: doc.id, order: data, customerData: customerData);
+                            } catch (e) {
+                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Print error: $e')));
+                            }
+                          },
+                          icon: const Icon(Icons.print),
+                          label: const Text('Print Bill'),
+                        ),
+                        FilledButton.icon(
+                          onPressed: (data['status'] ?? 'Pending') == 'Confirmed' ? null : () async {
+                            try {
+                              await doc.reference.update({'status': 'Confirmed', 'confirmedAt': FieldValue.serverTimestamp()});
+                              data['status'] = 'Confirmed';
+                              setDialogState(() {});
+                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order Confirmed')));
+                            } catch (e) {
+                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Confirm nahi hua: $e')));
+                            }
+                          },
+                          icon: const Icon(Icons.check_circle),
+                          label: const Text('Confirm Order'),
+                        ),
+                      ],
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(dialogContext),
-                        child: const Text('Close'),
-                      ),
-                    ],
                   ),
                 );
               },
-              leading: const Icon(Icons.shopping_bag, color: Colors.green),
+              leading: Icon(status == 'Confirmed' ? Icons.check_circle : Icons.shopping_bag, color: status == 'Confirmed' ? Colors.green : Colors.orange),
               title: Text('Order ${doc.id}'),
               subtitle: Text(
-                '${data['customerEmail'] ?? 'Customer'}\\n'
-                '${data['status'] ?? 'Pending'}\\n'
+                '${data['customerName'] ?? data['customerEmail'] ?? 'Customer'}\n'
+                '$status\n'
                 '$itemLines',
               ),
               isThreeLine: true,
