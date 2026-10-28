@@ -125,14 +125,14 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
         // Full logo card
         Card(
-          margin: const EdgeInsets.all(10),
-          elevation: 4,
+          margin: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+          elevation: 3,
           clipBehavior: Clip.antiAlias,
           child: SizedBox(
             width: double.infinity,
-            height: 250,
+            height: 125,
             child: Padding(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(4),
               child: Image.asset(
                 'fns_logo.png',
                 fit: BoxFit.contain,
@@ -471,10 +471,49 @@ class _CustomerScreenState extends State<CustomerScreen> {
                     );
                   }
 
-                  return ListView.builder(
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) =>
-                        buildProductCard(filtered[index]),
+                  // Show products under separate category headings.
+                  final grouped = <String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>{};
+                  for (final doc in filtered) {
+                    final rawCategory = (doc.data()['category'] ?? 'Other Items').toString();
+                    final category = categories.contains(rawCategory) && rawCategory != 'All Categories'
+                        ? rawCategory
+                        : 'Other Items';
+                    grouped.putIfAbsent(category, () => []).add(doc);
+                  }
+                  final orderedCategories = categories
+                      .where((c) => c != 'All Categories' && grouped.containsKey(c))
+                      .toList();
+                  for (final c in grouped.keys) {
+                    if (!orderedCategories.contains(c)) orderedCategories.add(c);
+                  }
+                  final rows = <Widget>[];
+                  for (final category in orderedCategories) {
+                    rows.add(
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                category,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green.shade800,
+                                ),
+                              ),
+                            ),
+                            Text('${grouped[category]!.length} items',
+                                style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    );
+                    rows.addAll(grouped[category]!.map(buildProductCard));
+                  }
+                  return ListView(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    children: rows,
                   );
                 },
               ),
