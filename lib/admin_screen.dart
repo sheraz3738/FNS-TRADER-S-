@@ -71,8 +71,8 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> productForm({String? id, Map<String,dynamic>? data}) async {
     final name = TextEditingController(text: data?['name']?.toString() ?? '');
-    final price = TextEditingController(text: data?['price']?.toString() ?? '');
-    final netRate = TextEditingController(text: data?['purchaseRate']?.toString() ?? '');
+    final netRate = TextEditingController(text: (data?['netRate'] ?? '').toString());
+    final price = TextEditingController(text: (data?['retailPrice'] ?? data?['price'] ?? '').toString());
     final stock = TextEditingController(text: data?['stock']?.toString() ?? '0');
     String category = productCategories.contains(data?['category']) ? data!['category'].toString() : 'Other Items';
     String? imageUrl = data?['imageUrl']?.toString();
@@ -99,7 +99,7 @@ class _AdminScreenState extends State<AdminScreen> {
             if (value != null) setD(() => category = value);
           },
         ),
-        TextField(controller: netRate, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Net / Purchase rate (Rs.)')),
+        TextField(controller: netRate, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Net customer rate (Rs.)')),
         TextField(controller: price, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Retail price (Rs.)')),
         TextField(controller: stock, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stock quantity')),
       ])),
@@ -119,7 +119,7 @@ class _AdminScreenState extends State<AdminScreen> {
               await ref.putData(bytes!, SettableMetadata(contentType: 'image/jpeg'));
               imageUrl = await ref.getDownloadURL();
             }
-            final payload = {'name':name.text.trim(),'category':category,'purchaseRate':n,'price':p,'stock':s,'imageUrl':imageUrl ?? '', 'updatedAt':FieldValue.serverTimestamp()};
+            final payload = {'name':name.text.trim(),'category':category,'netRate':n,'retailPrice':p,'price':p,'stock':s,'imageUrl':imageUrl ?? '', 'updatedAt':FieldValue.serverTimestamp()};
             if (id == null) { payload['createdAt'] = FieldValue.serverTimestamp(); await FirebaseFirestore.instance.collection('products').add(payload); }
             else { await FirebaseFirestore.instance.collection('products').doc(id).update(payload); }
             if (ctx.mounted) Navigator.pop(ctx);
@@ -236,7 +236,7 @@ class _AdminScreenState extends State<AdminScreen> {
                           errorBuilder: (_, __, ___) => const Icon(Icons.broken_image)),
                       ),
                   title: Text((p['name'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${p['category'] ?? 'Other Items'} | Net: Rs. ${p['purchaseRate'] ?? 0} | Retail: Rs. ${p['price'] ?? 0} | Stock: ${p['stock'] ?? 0}'),
+                  subtitle: Text('${p['category'] ?? 'Other Items'} | Net/customer: Rs. ${p['netRate'] ?? 0} | Retail: Rs. ${p['retailPrice'] ?? p['price'] ?? 0} | Stock: ${p['stock'] ?? 0}'),
                   trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                     IconButton(
                       tooltip: 'Add to bill',
@@ -244,7 +244,7 @@ class _AdminScreenState extends State<AdminScreen> {
                       onPressed: () => setState(() => cart.update(
                         d.id,
                         (v) => {...v, 'qty': (v['qty'] as int) + 1},
-                        ifAbsent: () => {'name': p['name'] ?? '', 'price': (p['price'] as num?)?.toInt() ?? 0, 'qty': 1},
+                        ifAbsent: () => {'name': p['name'] ?? '', 'price': ((p['netRate'] ?? p['price']) as num?)?.toInt() ?? 0, 'qty': 1},
                       )),
                     ),
                     IconButton(
@@ -491,7 +491,7 @@ class _AdminScreenState extends State<AdminScreen> {
                       setD(() {
                         productId = v;
                         productName = (d.data()['name'] ?? 'Item').toString();
-                        final currentRate = type == 'sale' ? d.data()['price'] : d.data()['purchaseRate'];
+                        final currentRate = type == 'sale' ? (d.data()['netRate'] ?? d.data()['price']) : d.data()['purchaseRate'];
                         rateCtrl.text = (currentRate ?? 0).toString();
                       });
                     },
