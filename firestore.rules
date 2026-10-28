@@ -2,28 +2,48 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
     function isFnsAdmin() {
-      return request.auth != null
+      return signedIn()
         && request.auth.token.email == 'customer_3343738405@fns.com';
     }
 
-    // Customer app can view the product catalogue.
-    // Only the designated admin can add, edit, or delete products.
+    // Public catalogue; only the designated admin can manage products.
     match /products/{productId} {
       allow read: if true;
       allow create, update, delete: if isFnsAdmin();
     }
 
-    // Business records are private to the admin account.
+    // Invoices are private business records.
     match /invoices/{invoiceId} {
       allow read, write: if isFnsAdmin();
     }
 
-    match /customers/{customerId} {
+    // Admin needs to read/update business receipt settings before printing.
+    match /app_settings/{settingId} {
       allow read, write: if isFnsAdmin();
     }
 
-    // Deny all other collections by default.
+    // Customers can create/read their own profile; admin can manage all profiles.
+    match /customers/{customerId} {
+      allow create: if signedIn() && request.auth.uid == customerId;
+      allow read: if isFnsAdmin() || (signedIn() && request.auth.uid == customerId);
+      allow update, delete: if isFnsAdmin();
+    }
+
+    // Customers can place/view only their own orders; admin can manage orders.
+    match /orders/{orderId} {
+      allow create: if signedIn()
+        && request.resource.data.customerId == request.auth.uid;
+      allow read: if isFnsAdmin()
+        || (signedIn() && resource.data.customerId == request.auth.uid);
+      allow update, delete: if isFnsAdmin();
+    }
+
+    // Deny everything not explicitly allowed above.
     match /{document=**} {
       allow read, write: if false;
     }
