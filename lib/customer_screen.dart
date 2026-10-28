@@ -21,6 +21,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
   final ScrollController welcomeController = ScrollController();
 
   String search = '';
+  String selectedCategory = 'All Categories';
+  static const List<String> categories = ['All Categories','Medicines','Syrups','Tablets/Capsules','Syringes','Surgical Items','BP & Sugar','General Items','Medical Equipment','Other Items'];
   final Map<String, int> cart = {};
   final Set<String> favorites = {};
 
@@ -397,6 +399,22 @@ class _CustomerScreenState extends State<CustomerScreen> {
                 ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: DropdownButtonFormField<String>(
+                value: selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Product category',
+                  border: OutlineInputBorder(),
+                ),
+                items: categories.map((category) => DropdownMenuItem(
+                  value: category, child: Text(category),
+                )).toList(),
+                onChanged: (value) {
+                  if (value != null) setState(() => selectedCategory = value);
+                },
+              ),
+            ),
             Expanded(
               child: StreamBuilder<
                   QuerySnapshot<Map<String, dynamic>>>(
@@ -426,11 +444,13 @@ class _CustomerScreenState extends State<CustomerScreen> {
                   }
 
                   final filtered = documents.where((doc) {
-                    final name =
-                        (doc.data()['name'] ?? '').toString();
-                    return name
-                        .toLowerCase()
-                        .contains(search.toLowerCase());
+                    final data = doc.data();
+                    final name = (data['name'] ?? '').toString();
+                    final category = (data['category'] ?? 'Other Items').toString();
+                    final matchesName = name.toLowerCase().contains(search.toLowerCase());
+                    final matchesCategory = selectedCategory == 'All Categories'
+                        || category == selectedCategory;
+                    return matchesName && matchesCategory;
                   }).toList();
 
                   if (filtered.isEmpty) {
