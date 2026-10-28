@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CustomerScreen extends StatefulWidget {
@@ -333,7 +334,14 @@ class _CustomerScreenState extends State<CustomerScreen> {
         throw Exception('Products nahi mile.');
       }
 
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('Order place karne ke liye login karein.');
+      }
+
       await FirebaseFirestore.instance.collection('orders').add({
+        'customerId': user.uid,
+        'customerEmail': user.email ?? '',
         'items': items,
         'total': total,
         'status': 'Pending',
