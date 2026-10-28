@@ -252,6 +252,51 @@ class _AdminScreenState extends State<AdminScreen> {
     OutlinedButton.icon(onPressed:busy?null:()=>checkout(true),icon:const Icon(Icons.receipt_long),label:const Text('Save & Print Thermal 80mm')),
   ]);
 
+  Widget ordersTab() => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    stream: FirebaseFirestore.instance
+        .collection('orders')
+        .orderBy('createdAt', descending: true)
+        .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return const Center(child: Text('Orders load nahi huay. Firestore Rules check karein.'));
+      }
+      if (!snapshot.hasData) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      final docs = snapshot.data!.docs;
+      if (docs.isEmpty) {
+        return const Center(child: Text('Abhi koi customer order nahi hai.'));
+      }
+      return ListView.builder(
+        padding: const EdgeInsets.all(10),
+        itemCount: docs.length,
+        itemBuilder: (context, index) {
+          final doc = docs[index];
+          final data = doc.data();
+          final items = (data['items'] as List?) ?? [];
+          final itemLines = items.map((item) {
+            final m = Map<String, dynamic>.from(item as Map);
+            return '${m['name'] ?? 'Product'} × ${m['quantity'] ?? 0}';
+          }).join('\n');
+          return Card(
+            child: ListTile(
+              leading: const Icon(Icons.shopping_bag, color: Colors.green),
+              title: Text('Order ${doc.id}'),
+              subtitle: Text(
+                '${data['customerEmail'] ?? 'Customer'}\n'
+                '${data['status'] ?? 'Pending'}\n'
+                '$itemLines',
+              ),
+              isThreeLine: true,
+              trailing: Text('Rs. ${data['total'] ?? 0}'),
+            ),
+          );
+        },
+      );
+    },
+  );
+
   Widget backupTab()=>Center(child:Padding(padding:const EdgeInsets.all(20),child:Column(mainAxisSize:MainAxisSize.min,children:[
     const Icon(Icons.cloud_done,size:60,color:Colors.green),
     const Text('Firebase cloud records',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
@@ -272,7 +317,7 @@ class _AdminScreenState extends State<AdminScreen> {
     backgroundColor:const Color(0xFFF5F5F5),
     body:SafeArea(child:Column(children:[
       header(),
-      Expanded(child:IndexedStack(index:tab,children:[productsTab(),billingTab(),backupTab(),settingsTab()])),
+      Expanded(child:IndexedStack(index:tab,children:[productsTab(),billingTab(),ordersTab(),backupTab(),settingsTab()])),
     ])),
     floatingActionButton: tab == 0
       ? FloatingActionButton.extended(
@@ -284,6 +329,7 @@ class _AdminScreenState extends State<AdminScreen> {
     bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const[
       NavigationDestination(icon:Icon(Icons.inventory_2),label:'Products'),
       NavigationDestination(icon:Icon(Icons.receipt_long),label:'Billing'),
+      NavigationDestination(icon:Icon(Icons.shopping_bag),label:'Orders'),
       NavigationDestination(icon:Icon(Icons.backup),label:'Backup'),
       NavigationDestination(icon:Icon(Icons.settings),label:'Settings'),
     ]),
