@@ -164,7 +164,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
   ) {
     final data = document.data();
     final name = (data['name'] ?? 'Product').toString();
-    final price = (data['price'] as num?)?.toInt() ?? 0;
+    final price = ((data['netRate'] ?? data['price']) as num?)?.toInt() ?? 0;
     final imageUrl = (data['imageUrl'] ?? '').toString();
     final quantity = cart[document.id] ?? 0;
     final isFavorite = favorites.contains(document.id);
@@ -320,7 +320,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
         if (!productDoc.exists) continue;
 
         final product = productDoc.data()!;
-        final price = (product['price'] as num?)?.toInt() ?? 0;
+        final price = ((product['netRate'] ?? product['price']) as num?)?.toInt() ?? 0;
 
         items.add({
           'productId': entry.key,
