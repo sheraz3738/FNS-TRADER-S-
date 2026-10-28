@@ -136,6 +136,15 @@ class _AdminScreenState extends State<AdminScreen> {
     if (cart.isEmpty) return;
     setState(()=>busy=true);
     final now = DateTime.now();
+    final businessSnap = await FirebaseFirestore.instance.collection('app_settings').doc('business').get();
+    final business = businessSnap.data() ?? <String,dynamic>{};
+    final businessName = (business['businessName'] ?? 'FNS TRADERS').toString();
+    final legalName = (business['legalName'] ?? 'BABA FALAK NAZ & SONS TRADERS').toString();
+    final businessAddress = (business['address'] ?? 'Plot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi').toString();
+    final businessPhone = (business['phone'] ?? '0334-3738405').toString();
+    final tagline = (business['tagline'] ?? 'We Believe in Truth in Business').toString();
+    final expiryNote = (business['expiryNote'] ?? 'Please check product expiry dates at the time of delivery.').toString();
+    final footerNote = (business['footerNote'] ?? 'Please keep this bill for your records and any expiry-related claim.').toString();
     final invNo = 'FNS-${now.millisecondsSinceEpoch}';
     final items = cart.entries.map((e)=>{'productId':e.key,'name':e.value['name'],'price':e.value['price'],'qty':e.value['qty'],'amount':(e.value['price'] as int)*(e.value['qty'] as int)}).toList();
     try {
@@ -149,10 +158,10 @@ class _AdminScreenState extends State<AdminScreen> {
       final doc = pw.Document();
       doc.addPage(pw.Page(pageFormat: thermal ? const PdfPageFormat(80*PdfPageFormat.mm, 250*PdfPageFormat.mm, marginAll: 5) : PdfPageFormat.a4,
         build: (_) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-          if (logoBytes != null) pw.Center(child: pw.Image(pw.MemoryImage(logoBytes), height: 65, fit: pw.BoxFit.contain)) else pw.Center(child: pw.Text('FNS TRADERS', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold))),
-          pw.Center(child: pw.Text('BABA FALAK NAZ & SONS TRADERS')),
-          pw.Text('Plot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi'),
-          pw.Text('Phone: 0334-3738405'),
+          if (logoBytes != null) pw.Center(child: pw.Image(pw.MemoryImage(logoBytes), height: 65, fit: pw.BoxFit.contain)) else pw.Center(child: pw.Text(businessName, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold))),
+          pw.Center(child: pw.Text(legalName)),
+          pw.Text(businessAddress),
+          pw.Text('Phone: $businessPhone'),
           pw.Divider(), pw.Text('Invoice: $invNo'), pw.Text('Date: ${now.toString().substring(0,16)}'),
           pw.Text('Customer: ${customer.text}'), pw.Text('Phone: ${phone.text}'), pw.Text('Address: ${address.text}'), pw.SizedBox(height: 8),
           pw.TableHelper.fromTextArray(headers:['S.No','Product','Qty','Rate','Amount'], data:[for(int i=0;i<items.length;i++) [ '${i+1}',items[i]['name'].toString(),items[i]['qty'].toString(),'Rs. ${items[i]['price']}','Rs. ${items[i]['amount']}']]),
@@ -274,6 +283,15 @@ class _AdminScreenState extends State<AdminScreen> {
   }) async {
     final items = (order['items'] as List?) ?? [];
     final now = DateTime.now();
+    final businessSnap = await FirebaseFirestore.instance.collection('app_settings').doc('business').get();
+    final business = businessSnap.data() ?? <String,dynamic>{};
+    final businessName = (business['businessName'] ?? 'FNS TRADERS').toString();
+    final legalName = (business['legalName'] ?? 'BABA FALAK NAZ & SONS TRADERS').toString();
+    final businessAddress = (business['address'] ?? 'Plot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi').toString();
+    final businessPhone = (business['phone'] ?? '0334-3738405').toString();
+    final tagline = (business['tagline'] ?? 'We Believe in Truth in Business').toString();
+    final expiryNote = (business['expiryNote'] ?? 'Please check product expiry dates at the time of delivery.').toString();
+    final footerNote = (business['footerNote'] ?? 'Please keep this bill for your records and any expiry-related claim.').toString();
     Uint8List? logoBytes;
     try { logoBytes = (await rootBundle.load('fns_logo.png')).buffer.asUint8List(); } catch (_) {}
     final pdf = pw.Document();
@@ -282,10 +300,10 @@ class _AdminScreenState extends State<AdminScreen> {
       build: (_) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          if (logoBytes != null) pw.Center(child: pw.Image(pw.MemoryImage(logoBytes), height: 75, fit: pw.BoxFit.contain)) else pw.Center(child: pw.Text('FNS TRADERS', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold))),
-          pw.Center(child: pw.Text('BABA FALAK NAZ & SONS TRADERS')),
-          pw.Center(child: pw.Text('Plot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi')),
-          pw.Center(child: pw.Text('Phone: 0334-3738405')),
+          if (logoBytes != null) pw.Center(child: pw.Image(pw.MemoryImage(logoBytes), height: 75, fit: pw.BoxFit.contain)) else pw.Center(child: pw.Text(businessName, style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold))),
+          pw.Center(child: pw.Text(legalName)),
+          pw.Center(child: pw.Text(businessAddress)),
+          pw.Center(child: pw.Text('Phone: $businessPhone')),
           pw.Divider(),
           pw.Text('ORDER BILL', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           pw.Text('Order No: $orderId'),
@@ -313,10 +331,10 @@ class _AdminScreenState extends State<AdminScreen> {
             child: pw.Text('TOTAL: Rs. ${order['total'] ?? 0}', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
           ),
           pw.SizedBox(height: 24),
-          pw.Center(child: pw.Text('Please check product expiry dates at the time of delivery.', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 9))),
-          pw.Center(child: pw.Text('Please keep this bill for your records and any expiry-related claim.', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 9))),
+          pw.Center(child: pw.Text(expiryNote, textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 9))),
+          pw.Center(child: pw.Text(footerNote, textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 9))),
           pw.SizedBox(height: 5),
-          pw.Center(child: pw.Text('We Believe in Truth in Business', textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold))),
+          pw.Center(child: pw.Text(tagline, textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold))),
           pw.Center(child: pw.Text('Thank you for your order!', textAlign: pw.TextAlign.center)),
         ],
       ),
