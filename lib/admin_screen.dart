@@ -437,6 +437,155 @@ class _AdminScreenState extends State<AdminScreen> {
     },
   );
 
+
+  Future<void> inventoryEntry(String type) async {
+    final itemCtrl = TextEditingController();
+    final qtyCtrl = TextEditingController(text: '1');
+    final rateCtrl = TextEditingController(text: '0');
+    final partyCtrl = TextEditingController();
+    final noteCtrl = TextEditingController();
+    String? productId;
+    String? productName;
+    bool saving = false;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: Text(type == 'purchase' ? 'Record Purchase' : type == 'sale' ? 'Record Sale' : 'Record Expense'),
+          content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            if (type != 'expense')
+              StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(
+                stream: FirebaseFirestore.instance.collection('products').orderBy('name').snapshots(),
+                builder: (c, snap) {
+                  final docs = snap.data?.docs ?? [];
+                  return DropdownButtonFormField<String>(
+                    value: productId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Item'),
+                    items: docs.map((d) => DropdownMenuItem<String>(value: d.id, child: Text('${d.data()['name'] ?? 'Item'}'))).toList(),
+                    onChanged: saving ? null : (v) {
+                      if (v == null) return;
+                      final d = docs.firstWhere((x) => x.id == v);
+                      setD(() {
+                        productId = v;
+                        productName = (d.data()['name'] ?? 'Item').toString();
+                        final currentRate = type == 'sale' ? d.data()['price'] : d.data()['purchaseRate'];
+                        rateCtrl.text = (currentRate ?? 0).toString();
+                      });
+                    },
+                  );
+                },
+              ),
+            if (type == 'purchase' || type == 'expense')
+              TextField(controller: partyCtrl, decoration: InputDecoration(labelText: type == 'purchase' ? 'Supplier name' : 'Expense type / details')),
+            if (type != 'expense') TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantity')),
+            TextField(controller: rateCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: type == 'expense' ? 'Expense amount (Rs.)' : type == 'purchase' ? 'Purchase rate per item (Rs.)' : 'Sale rate per item (Rs.)')),
+            TextField(controller: noteCtrl, decoration: const InputDecoration(labelText: 'Notes (optional)')),
+          ])),
+          actions: [
+            TextButton(onPressed: saving ? null : () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: saving ? null : () async {
+                final qty = int.tryParse(qtyCtrl.text.trim());
+                final rate = double.tryParse(rateCtrl.text.trim());
+                if (rate == null || rate < 0 || (type != 'expense' && (productId == null || qty == null || qty <= 0)) || (type == 'expense' && partyCtrl.text.trim().isEmpty)) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item, valid quantity/rate aur required details check karein.')));
+                  return;
+                }
+                setD(() => saving = true);
+                try {
+                  final db = FirebaseFirestore.instance;
+                  if (type == 'expense') {
+                    await db.collection('expenses').add({'description':partyCtrl.text.trim(),'amount':rate,'notes':noteCtrl.text.trim(),'createdAt':FieldValue.serverTimestamp()});
+                  } else {
+                    final ref = db.collection('products').doc(productId);
+                    await db.runTransaction((tx) async {
+                      final snap = await tx.get(ref);
+                      if (!snap.exists) throw Exception('Item not found');
+                      final data = snap.data()!;
+                      final stock = ((data['stock'] ?? 0) as num).toInt();
+                      if (type == 'sale' && stock < qty!) throw Exception('Stock kam hai. Available: $stock');
+                      final newStock = type == 'purchase' ? stock + qty! : stock - qty!;
+                      final update = <String,dynamic>{'stock':newStock,'updatedAt':FieldValue.serverTimestamp()};
+                      if (type == 'purchase') update['purchaseRate'] = rate;
+                      tx.update(ref, update);
+                      tx.set(db.collection(type == 'purchase' ? 'purchases' : 'sales').doc(), {
+                        'productId':productId,'productName':data['name'] ?? productName ?? 'Item',
+                        'quantity':qty,'rate':rate,'amount':qty! * rate,
+                        'supplier':type == 'purchase' ? partyCtrl.text.trim() : '',
+                        'notes':noteCtrl.text.trim(),'createdAt':FieldValue.serverTimestamp(),
+                        if (type == 'sale') 'costRate':(data['purchaseRate'] ?? 0),
+                        if (type == 'sale') 'profit':(rate - ((data['purchaseRate'] ?? 0) as num).toDouble()) * qty,
+                      });
+                    });
+                  }
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(type == 'purchase' ? 'Purchase saved; stock increased.' : type == 'sale' ? 'Sale saved; stock decreased.' : 'Expense saved.')));
+                } catch (e) {
+                  setD(() => saving = false);
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save nahi hua: $e')));
+                }
+              },
+              child: saving ? const SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2)) : const Text('Save Record'),
+            ),
+          ],
+        ),
+      ),
+    );
+    itemCtrl.dispose(); qtyCtrl.dispose(); rateCtrl.dispose(); partyCtrl.dispose(); noteCtrl.dispose();
+  }
+
+  Widget inventoryTab() => ListView(
+    padding: const EdgeInsets.all(12),
+    children: [
+      const Text('INVENTORY & PROFIT / LOSS', style: TextStyle(fontSize:18,fontWeight:FontWeight.bold)),
+      const SizedBox(height:8),
+      const Text('Purchase se stock barhega, sale se stock kam hoga. Sale profit purchase rate ke mutabiq estimate hoga.'),
+      const SizedBox(height:12),
+      Wrap(spacing:8, runSpacing:8, children:[
+        FilledButton.icon(onPressed:()=>inventoryEntry('purchase'), icon:const Icon(Icons.add_box), label:const Text('Purchase')),
+        FilledButton.icon(onPressed:()=>inventoryEntry('sale'), icon:const Icon(Icons.point_of_sale), label:const Text('Sale')),
+        OutlinedButton.icon(onPressed:()=>inventoryEntry('expense'), icon:const Icon(Icons.money_off), label:const Text('Expense')),
+      ]),
+      const SizedBox(height:12),
+      StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(
+        stream: FirebaseFirestore.instance.collection('products').snapshots(),
+        builder:(context,snap){
+          final docs=snap.data?.docs ?? [];
+          final stockValue=docs.fold<double>(0,(sum,d)=>sum+(((d.data()['stock'] ?? 0) as num).toDouble()*((d.data()['purchaseRate'] ?? 0) as num).toDouble()));
+          final low=docs.where((d)=>((d.data()['stock'] ?? 0) as num)<=5).length;
+          return Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            const Text('Current Inventory',style:TextStyle(fontWeight:FontWeight.bold,fontSize:16)),
+            Text('Items: ${docs.length}'),
+            Text('Estimated stock cost: Rs. ${stockValue.toStringAsFixed(2)}'),
+            Text('Low stock (5 or less): $low'),
+          ])));
+        },
+      ),
+      StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(
+        stream: FirebaseFirestore.instance.collection('sales').snapshots(),
+        builder:(context,salesSnap)=>StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(
+          stream: FirebaseFirestore.instance.collection('expenses').snapshots(),
+          builder:(context,expenseSnap){
+            final sales=salesSnap.data?.docs ?? [];
+            final expenses=expenseSnap.data?.docs ?? [];
+            final revenue=sales.fold<double>(0,(sum,d)=>sum+((d.data()['amount'] ?? 0) as num).toDouble());
+            final gross=sales.fold<double>(0,(sum,d)=>sum+((d.data()['profit'] ?? 0) as num).toDouble());
+            final expenseTotal=expenses.fold<double>(0,(sum,d)=>sum+((d.data()['amount'] ?? 0) as num).toDouble());
+            return Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              const Text('All-time Summary',style:TextStyle(fontWeight:FontWeight.bold,fontSize:16)),
+              Text('Recorded sales: Rs. ${revenue.toStringAsFixed(2)}'),
+              Text('Estimated gross profit: Rs. ${gross.toStringAsFixed(2)}'),
+              Text('Expenses: Rs. ${expenseTotal.toStringAsFixed(2)}'),
+              Text('Estimated net profit/loss: Rs. ${(gross-expenseTotal).toStringAsFixed(2)}',style:TextStyle(fontWeight:FontWeight.bold,color:gross-expenseTotal>=0?Colors.green:Colors.red)),
+              const Text('Note: Existing billing sales tab ke sales is report mein tab tak shamil nahi jab tak unka inventory sales record na banaya jaye.',style:TextStyle(fontSize:11)),
+            ])));
+          },
+        ),
+      ),
+    ],
+  );
+
   Widget backupTab()=>Center(child:Padding(padding:const EdgeInsets.all(20),child:Column(mainAxisSize:MainAxisSize.min,children:[
     const Icon(Icons.cloud_done,size:60,color:Colors.green),
     const Text('Firebase cloud records',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
@@ -457,7 +606,7 @@ class _AdminScreenState extends State<AdminScreen> {
     backgroundColor:const Color(0xFFF5F5F5),
     body:SafeArea(child:Column(children:[
       header(),
-      Expanded(child:IndexedStack(index:tab,children:[productsTab(),billingTab(),ordersTab(),backupTab(),settingsTab()])),
+      Expanded(child:IndexedStack(index:tab,children:[productsTab(),billingTab(),inventoryTab(),ordersTab(),backupTab(),settingsTab()])),
     ])),
     floatingActionButton: tab == 0
       ? FloatingActionButton.extended(
@@ -469,6 +618,7 @@ class _AdminScreenState extends State<AdminScreen> {
     bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const[
       NavigationDestination(icon:Icon(Icons.inventory_2),label:'Products'),
       NavigationDestination(icon:Icon(Icons.receipt_long),label:'Billing'),
+      NavigationDestination(icon:Icon(Icons.inventory),label:'Inventory'),
       NavigationDestination(icon:Icon(Icons.shopping_bag),label:'Orders'),
       NavigationDestination(icon:Icon(Icons.backup),label:'Backup'),
       NavigationDestination(icon:Icon(Icons.settings),label:'Settings'),
