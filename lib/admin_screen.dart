@@ -19,6 +19,7 @@ class AdminScreen extends StatefulWidget {
 class _AdminScreenState extends State<AdminScreen> {
   int tab = 0;
   String search = '';
+  static const List<String> productCategories = ['Medicines','Syrups','Tablets/Capsules','Syringes','Surgical Items','BP & Sugar','General Items','Medical Equipment','Other Items'];
   final ScrollController welcomeController = ScrollController();
   Timer? welcomeTimer;
 
@@ -71,6 +72,7 @@ class _AdminScreenState extends State<AdminScreen> {
     final name = TextEditingController(text: data?['name']?.toString() ?? '');
     final price = TextEditingController(text: data?['price']?.toString() ?? '');
     final stock = TextEditingController(text: data?['stock']?.toString() ?? '0');
+    String category = productCategories.contains(data?['category']) ? data!['category'].toString() : 'Other Items';
     String? imageUrl = data?['imageUrl']?.toString();
     Uint8List? bytes;
     bool saving = false;
@@ -85,6 +87,16 @@ class _AdminScreenState extends State<AdminScreen> {
           if (x != null) { bytes = await x.readAsBytes(); setD(() {}); }
         }, icon: const Icon(Icons.photo_library), label: const Text('Choose picture from gallery')),
         TextField(controller: name, decoration: const InputDecoration(labelText: 'Product name')),
+        DropdownButtonFormField<String>(
+          value: category,
+          decoration: const InputDecoration(labelText: 'Product category'),
+          items: productCategories.map((value) => DropdownMenuItem(
+            value: value, child: Text(value),
+          )).toList(),
+          onChanged: saving ? null : (value) {
+            if (value != null) setD(() => category = value);
+          },
+        ),
         TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Retail price (Rs.)')),
         TextField(controller: stock, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stock quantity')),
       ])),
@@ -102,7 +114,7 @@ class _AdminScreenState extends State<AdminScreen> {
               await ref.putData(bytes!, SettableMetadata(contentType: 'image/jpeg'));
               imageUrl = await ref.getDownloadURL();
             }
-            final payload = {'name':name.text.trim(),'price':p,'stock':s,'imageUrl':imageUrl ?? '', 'updatedAt':FieldValue.serverTimestamp()};
+            final payload = {'name':name.text.trim(),'category':category,'price':p,'stock':s,'imageUrl':imageUrl ?? '', 'updatedAt':FieldValue.serverTimestamp()};
             if (id == null) { payload['createdAt'] = FieldValue.serverTimestamp(); await FirebaseFirestore.instance.collection('products').add(payload); }
             else { await FirebaseFirestore.instance.collection('products').doc(id).update(payload); }
             if (ctx.mounted) Navigator.pop(ctx);
@@ -208,7 +220,7 @@ class _AdminScreenState extends State<AdminScreen> {
                           errorBuilder: (_, __, ___) => const Icon(Icons.broken_image)),
                       ),
                   title: Text((p['name'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Retail: Rs. ${p['price'] ?? 0} | Stock: ${p['stock'] ?? 0}'),
+                  subtitle: Text('${p['category'] ?? 'Other Items'} | Retail: Rs. ${p['price'] ?? 0} | Stock: ${p['stock'] ?? 0}'),
                   trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                     IconButton(
                       tooltip: 'Add to bill',
