@@ -594,13 +594,79 @@ class _AdminScreenState extends State<AdminScreen> {
     TextButton(onPressed:()=>FirebaseAuth.instance.signOut(),child:const Text('Log out')),
   ])));
 
-  Widget settingsTab()=>ListView(padding:const EdgeInsets.all(16),children:[
-    const ListTile(leading:Icon(Icons.store,color:Colors.blue),title:Text('FNS TRADERS'),subtitle:Text('Admin settings')),
-    const ListTile(leading:Icon(Icons.location_on,color:Colors.blue),title:Text('Business address'),subtitle:Text('Plot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi')),
-    const ListTile(leading:Icon(Icons.phone,color:Colors.green),title:Text('Contact'),subtitle:Text('0334-3738405')),
-    const ListTile(leading:Icon(Icons.image,color:Colors.blue),title:Text('Product details'),subtitle:Text('Add Product mein name, retail price, stock aur gallery picture set karein.')),
-    FilledButton.icon(onPressed:()=>FirebaseAuth.instance.signOut(),icon:const Icon(Icons.logout),label:const Text('Log out')),
-  ]);
+
+  Future<void> editBusinessSettings(Map<String,dynamic> current) async {
+    final nameCtrl = TextEditingController(text: (current['businessName'] ?? 'FNS TRADERS').toString());
+    final legalCtrl = TextEditingController(text: (current['legalName'] ?? 'BABA FALAK NAZ & SONS TRADERS').toString());
+    final addressCtrl = TextEditingController(text: (current['address'] ?? 'Plot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi').toString());
+    final phoneCtrl = TextEditingController(text: (current['phone'] ?? '0334-3738405').toString());
+    final taglineCtrl = TextEditingController(text: (current['tagline'] ?? 'We Believe in Truth in Business').toString());
+    final expiryCtrl = TextEditingController(text: (current['expiryNote'] ?? 'Please check product expiry dates at the time of delivery.').toString());
+    final footerCtrl = TextEditingController(text: (current['footerNote'] ?? 'Please keep this bill for your records and any expiry-related claim.').toString());
+    bool saving = false;
+    await showDialog<void>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx,setD)=>AlertDialog(
+      title: const Text('Edit Business Settings'),
+      content: SizedBox(width: 460, child: SingleChildScrollView(child: Column(mainAxisSize:MainAxisSize.min,children:[
+        TextField(controller:nameCtrl,decoration:const InputDecoration(labelText:'Business name')),
+        TextField(controller:legalCtrl,decoration:const InputDecoration(labelText:'Registered / full business name')),
+        TextField(controller:addressCtrl,maxLines:2,decoration:const InputDecoration(labelText:'Business address')),
+        TextField(controller:phoneCtrl,keyboardType:TextInputType.phone,decoration:const InputDecoration(labelText:'Contact number')),
+        TextField(controller:taglineCtrl,decoration:const InputDecoration(labelText:'Bill tagline')),
+        TextField(controller:expiryCtrl,maxLines:2,decoration:const InputDecoration(labelText:'Expiry reminder on bill')),
+        TextField(controller:footerCtrl,maxLines:2,decoration:const InputDecoration(labelText:'Bill footer / return note')),
+      ]))),
+      actions:[
+        TextButton(onPressed:saving?null:()=>Navigator.pop(ctx),child:const Text('Cancel')),
+        FilledButton(onPressed:saving?null:() async {
+          if(nameCtrl.text.trim().isEmpty || addressCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty){
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Business name, address aur phone zaroor likhein.'))); return;
+          }
+          setD(()=>saving=true);
+          try {
+            await FirebaseFirestore.instance.collection('app_settings').doc('business').set({
+              'businessName':nameCtrl.text.trim(),'legalName':legalCtrl.text.trim(),
+              'address':addressCtrl.text.trim(),'phone':phoneCtrl.text.trim(),
+              'tagline':taglineCtrl.text.trim(),'expiryNote':expiryCtrl.text.trim(),
+              'footerNote':footerCtrl.text.trim(),'updatedAt':FieldValue.serverTimestamp(),
+            },SetOptions(merge:true));
+            if(ctx.mounted) Navigator.pop(ctx);
+            if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Business settings save ho gayi hain.')));
+          } catch(e) {
+            setD(()=>saving=false);
+            if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Settings save nahi hui: $e')));
+          }
+        },child:saving?const SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2)):const Text('Save Changes')),
+      ],
+    )));
+    nameCtrl.dispose();legalCtrl.dispose();addressCtrl.dispose();phoneCtrl.dispose();taglineCtrl.dispose();expiryCtrl.dispose();footerCtrl.dispose();
+  }
+
+  Widget settingsTab()=>StreamBuilder<DocumentSnapshot<Map<String,dynamic>>>(
+    stream:FirebaseFirestore.instance.collection('app_settings').doc('business').snapshots(),
+    builder:(context,snap){
+      final data=snap.data?.data() ?? <String,dynamic>{};
+      final name=(data['businessName'] ?? 'FNS TRADERS').toString();
+      final legal=(data['legalName'] ?? 'BABA FALAK NAZ & SONS TRADERS').toString();
+      final address=(data['address'] ?? 'Plot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi').toString();
+      final phone=(data['phone'] ?? '0334-3738405').toString();
+      final tagline=(data['tagline'] ?? 'We Believe in Truth in Business').toString();
+      return ListView(padding:const EdgeInsets.all(16),children:[
+        const Text('ADMIN SETTINGS',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
+        const SizedBox(height:8),
+        Card(child:Column(children:[
+          ListTile(leading:const Icon(Icons.store,color:Colors.blue),title:Text(name),subtitle:Text(legal)),
+          ListTile(leading:const Icon(Icons.location_on,color:Colors.blue),title:const Text('Business address'),subtitle:Text(address)),
+          ListTile(leading:const Icon(Icons.phone,color:Colors.green),title:const Text('Contact'),subtitle:Text(phone)),
+          ListTile(leading:const Icon(Icons.format_quote,color:Colors.deepPurple),title:const Text('Bill tagline'),subtitle:Text(tagline)),
+          Padding(padding:const EdgeInsets.all(12),child:SizedBox(width:double.infinity,child:FilledButton.icon(
+            onPressed:()=>editBusinessSettings(data),icon:const Icon(Icons.edit),label:const Text('Edit Business & Bill Settings')))),
+        ])),
+        const Card(child:ListTile(leading:Icon(Icons.inventory_2,color:Colors.blue),title:Text('Product & Inventory'),subtitle:Text('Products tab se item, retail price aur stock; Inventory tab se purchase, sale aur expenses manage karein.'))),
+        const Card(child:ListTile(leading:Icon(Icons.receipt_long,color:Colors.blue),title:Text('Invoice settings'),subtitle:Text('Yahan bill ka tagline, expiry reminder aur footer text edit kar sakte hain.'))),
+        FilledButton.icon(onPressed:()=>FirebaseAuth.instance.signOut(),icon:const Icon(Icons.logout),label:const Text('Log out')),
+      ]);
+    },
+  );
 
   @override Widget build(BuildContext context)=>Scaffold(
     backgroundColor:const Color(0xFFF5F5F5),
