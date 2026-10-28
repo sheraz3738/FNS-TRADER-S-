@@ -341,9 +341,21 @@ class _CustomerScreenState extends State<CustomerScreen> {
         throw Exception('Order place karne ke liye login karein.');
       }
 
+      Map<String, dynamic> customerProfile = {};
+      try {
+        final profileDoc = await FirebaseFirestore.instance
+            .collection('customers')
+            .doc(user.uid)
+            .get();
+        customerProfile = profileDoc.data() ?? {};
+      } catch (_) {}
+
       await FirebaseFirestore.instance.collection('orders').add({
         'customerId': user.uid,
         'customerEmail': user.email ?? '',
+        'customerName': customerProfile['shopName'] ?? '',
+        'customerPhone': customerProfile['contact'] ?? '',
+        'customerAddress': customerProfile['address'] ?? '',
         'items': items,
         'total': total,
         'status': 'Pending',
