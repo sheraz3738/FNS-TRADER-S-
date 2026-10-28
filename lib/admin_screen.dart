@@ -293,17 +293,46 @@ class _AdminScreenState extends State<AdminScreen> {
           }).join('\n');
           return Card(
             child: ListTile(
+              onTap: () async {
+                await showDialog<void>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    title: Text('Order ${doc.id}'),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Customer: ${data['customerEmail'] ?? 'Customer'}'),
+                          const SizedBox(height: 8),
+                          Text('Status: ${data['status'] ?? 'Pending'}'),
+                          Text('Total: Rs. ${data['total'] ?? 0}'),
+                          const SizedBox(height: 12),
+                          const Text('Items', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(itemLines.isEmpty ? 'No item details found' : itemLines),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                );
+              },
               leading: const Icon(Icons.shopping_bag, color: Colors.green),
               title: Text('Order ${doc.id}'),
               subtitle: Text(
-                '${data['customerEmail'] ?? 'Customer'}\n'
-                '${data['status'] ?? 'Pending'}\n'
+                '${data['customerEmail'] ?? 'Customer'}\\n'
+                '${data['status'] ?? 'Pending'}\\n'
                 '$itemLines',
               ),
               isThreeLine: true,
               trailing: Text('Rs. ${data['total'] ?? 0}'),
             ),
-          );
+          )
         },
       );
     },
