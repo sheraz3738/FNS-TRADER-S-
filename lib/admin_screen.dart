@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
@@ -143,10 +144,12 @@ class _AdminScreenState extends State<AdminScreen> {
         'items':items,'subtotal':subtotal,'discount':int.tryParse(discount.text) ?? 0,'total':finalTotal,
         'createdAt':FieldValue.serverTimestamp(),
       });
+      Uint8List? logoBytes;
+      try { logoBytes = (await rootBundle.load('fns_logo.png')).buffer.asUint8List(); } catch (_) {}
       final doc = pw.Document();
       doc.addPage(pw.Page(pageFormat: thermal ? const PdfPageFormat(80*PdfPageFormat.mm, 250*PdfPageFormat.mm, marginAll: 5) : PdfPageFormat.a4,
         build: (_) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-          pw.Center(child: pw.Text('FNS TRADERS', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold))),
+          if (logoBytes != null) pw.Center(child: pw.Image(pw.MemoryImage(logoBytes), height: 65, fit: pw.BoxFit.contain)) else pw.Center(child: pw.Text('FNS TRADERS', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold))),
           pw.Center(child: pw.Text('BABA FALAK NAZ & SONS TRADERS')),
           pw.Text('Plot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi'),
           pw.Text('Phone: 0334-3738405'),
@@ -271,13 +274,15 @@ class _AdminScreenState extends State<AdminScreen> {
   }) async {
     final items = (order['items'] as List?) ?? [];
     final now = DateTime.now();
+    Uint8List? logoBytes;
+    try { logoBytes = (await rootBundle.load('fns_logo.png')).buffer.asUint8List(); } catch (_) {}
     final pdf = pw.Document();
     pdf.addPage(pw.Page(
       pageFormat: PdfPageFormat.a4,
       build: (_) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Center(child: pw.Text('FNS TRADERS', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold))),
+          if (logoBytes != null) pw.Center(child: pw.Image(pw.MemoryImage(logoBytes), height: 75, fit: pw.BoxFit.contain)) else pw.Center(child: pw.Text('FNS TRADERS', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold))),
           pw.Center(child: pw.Text('BABA FALAK NAZ & SONS TRADERS')),
           pw.Center(child: pw.Text('Plot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi')),
           pw.Center(child: pw.Text('Phone: 0334-3738405')),
@@ -308,7 +313,11 @@ class _AdminScreenState extends State<AdminScreen> {
             child: pw.Text('TOTAL: Rs. ${order['total'] ?? 0}', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
           ),
           pw.SizedBox(height: 24),
-          pw.Center(child: pw.Text('Thank you for your order!')),
+          pw.Center(child: pw.Text('Please check product expiry dates at the time of delivery.', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 9))),
+          pw.Center(child: pw.Text('Please keep this bill for your records and any expiry-related claim.', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 9))),
+          pw.SizedBox(height: 5),
+          pw.Center(child: pw.Text('We Believe in Truth in Business', textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold))),
+          pw.Center(child: pw.Text('Thank you for your order!', textAlign: pw.TextAlign.center)),
         ],
       ),
     ));
