@@ -332,7 +332,7 @@ class _AdminScreenState extends State<AdminScreen> {
               isThreeLine: true,
               trailing: Text('Rs. ${data['total'] ?? 0}'),
             ),
-          )
+          );
         },
       );
     },
