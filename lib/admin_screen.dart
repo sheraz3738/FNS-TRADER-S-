@@ -72,6 +72,7 @@ class _AdminScreenState extends State<AdminScreen> {
   Future<void> productForm({String? id, Map<String,dynamic>? data}) async {
     final name = TextEditingController(text: data?['name']?.toString() ?? '');
     final price = TextEditingController(text: data?['price']?.toString() ?? '');
+    final netRate = TextEditingController(text: data?['purchaseRate']?.toString() ?? '');
     final stock = TextEditingController(text: data?['stock']?.toString() ?? '0');
     String category = productCategories.contains(data?['category']) ? data!['category'].toString() : 'Other Items';
     String? imageUrl = data?['imageUrl']?.toString();
@@ -98,14 +99,17 @@ class _AdminScreenState extends State<AdminScreen> {
             if (value != null) setD(() => category = value);
           },
         ),
-        TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Retail price (Rs.)')),
+        TextField(controller: netRate, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Net / Purchase rate (Rs.)')),
+        TextField(controller: price, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Retail price (Rs.)')),
         TextField(controller: stock, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stock quantity')),
       ])),
       actions: [
         TextButton(onPressed: saving ? null : ()=>Navigator.pop(ctx), child: const Text('Cancel')),
         FilledButton(onPressed: saving ? null : () async {
-          final p = int.tryParse(price.text.trim()); final s = int.tryParse(stock.text.trim());
-          if (name.text.trim().isEmpty || p == null || s == null) {
+          final p = double.tryParse(price.text.trim());
+          final n = double.tryParse(netRate.text.trim().isEmpty ? '0' : netRate.text.trim());
+          final s = int.tryParse(stock.text.trim());
+          if (name.text.trim().isEmpty || p == null || p < 0 || n == null || n < 0 || s == null) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name, valid price aur stock likhein.'))); return;
           }
           setD(()=>saving=true);
@@ -115,7 +119,7 @@ class _AdminScreenState extends State<AdminScreen> {
               await ref.putData(bytes!, SettableMetadata(contentType: 'image/jpeg'));
               imageUrl = await ref.getDownloadURL();
             }
-            final payload = {'name':name.text.trim(),'category':category,'price':p,'stock':s,'imageUrl':imageUrl ?? '', 'updatedAt':FieldValue.serverTimestamp()};
+            final payload = {'name':name.text.trim(),'category':category,'purchaseRate':n,'price':p,'stock':s,'imageUrl':imageUrl ?? '', 'updatedAt':FieldValue.serverTimestamp()};
             if (id == null) { payload['createdAt'] = FieldValue.serverTimestamp(); await FirebaseFirestore.instance.collection('products').add(payload); }
             else { await FirebaseFirestore.instance.collection('products').doc(id).update(payload); }
             if (ctx.mounted) Navigator.pop(ctx);
@@ -126,7 +130,7 @@ class _AdminScreenState extends State<AdminScreen> {
         }, child: saving ? const SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2)) : const Text('Save')),
       ],
     )));
-    name.dispose(); price.dispose(); stock.dispose();
+    name.dispose(); price.dispose(); netRate.dispose(); stock.dispose();
   }
 
   int get subtotal => cart.values.fold(0, (n,p)=>n+(p['price'] as int)*(p['qty'] as int));
@@ -232,7 +236,7 @@ class _AdminScreenState extends State<AdminScreen> {
                           errorBuilder: (_, __, ___) => const Icon(Icons.broken_image)),
                       ),
                   title: Text((p['name'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${p['category'] ?? 'Other Items'} | Retail: Rs. ${p['price'] ?? 0} | Stock: ${p['stock'] ?? 0}'),
+                  subtitle: Text('${p['category'] ?? 'Other Items'} | Net: Rs. ${p['purchaseRate'] ?? 0} | Retail: Rs. ${p['price'] ?? 0} | Stock: ${p['stock'] ?? 0}'),
                   trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                     IconButton(
                       tooltip: 'Add to bill',
