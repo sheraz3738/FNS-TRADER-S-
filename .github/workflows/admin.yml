@@ -142,10 +142,15 @@ jobs:
           if [ ! -f "$KEYSTORE" ]; then
             keytool -genkeypair -v -keystore "$KEYSTORE" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
+          ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -n 1)
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)
+          test -x "$ZIPALIGN"
           test -x "$APKSIGNER"
+          "$ZIPALIGN" -f -p 4 "$APK" "$HOME/aligned-admin.apk"
+          mv "$HOME/aligned-admin.apk" "$APK"
           "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass pass:android --ks-key-alias androiddebugkey --key-pass pass:android --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true "$APK"
           "$APKSIGNER" verify --verbose --print-certs "$APK"
+          "$APKSIGNER" verify --verbose "$APK"
           APKANALYZER=$(find "$ANDROID_HOME" -type f -name apkanalyzer | sort -V | tail -n 1)
           if [ -x "$APKANALYZER" ]; then
             echo "=== APK manifest/package details ==="
