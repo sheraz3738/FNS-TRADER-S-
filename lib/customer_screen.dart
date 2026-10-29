@@ -16,6 +16,112 @@ class CustomerScreen extends StatefulWidget {
   State<CustomerScreen> createState() => _CustomerScreenState();
 }
 
+class ProductDetailPage extends StatefulWidget {
+  final Map<String, dynamic> product;
+  final int initialQuantity;
+  final ValueChanged<int> onAddToCart;
+
+  const ProductDetailPage({
+    super.key,
+    required this.product,
+    required this.initialQuantity,
+    required this.onAddToCart,
+  });
+
+  @override
+  State<ProductDetailPage> createState() => _ProductDetailPageState();
+}
+
+class _ProductDetailPageState extends State<ProductDetailPage> {
+  late int quantity;
+
+  @override
+  void initState() {
+    super.initState();
+    quantity = widget.initialQuantity;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final product = widget.product;
+    final name = (product['name'] ?? 'Product').toString();
+    final netRate = ((product['netRate'] ?? product['price']) as num?)?.toInt() ?? 0;
+    final retailRate = ((product['retailPrice'] ?? product['price']) as num?)?.toInt() ?? 0;
+    final imageUrl = (product['imageUrl'] ?? '').toString();
+    final description = (product['description'] ?? '').toString();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Product Details')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (imageUrl.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                imageUrl,
+                height: 220,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(Icons.medication, size: 100),
+              ),
+            )
+          else
+            const SizedBox(
+              height: 180,
+              child: Icon(Icons.medication, size: 100, color: Colors.blue),
+            ),
+          const SizedBox(height: 20),
+          Text(name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Text('Net Rate: Rs. $netRate',
+              style: const TextStyle(fontSize: 18, color: Colors.green, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          Text('Retail Rate: Rs. $retailRate',
+              style: const TextStyle(fontSize: 18, color: Colors.blueGrey, fontWeight: FontWeight.w600)),
+          if (description.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(description, style: const TextStyle(fontSize: 16)),
+          ],
+          const SizedBox(height: 24),
+          const Text('Quantity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                onPressed: quantity > 0 ? () => setState(() => quantity--) : null,
+                icon: const Icon(Icons.remove_circle_outline, size: 34),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text('$quantity', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              ),
+              IconButton(
+                onPressed: () => setState(() => quantity++),
+                icon: const Icon(Icons.add_circle_outline, size: 34, color: Colors.green),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: quantity > 0
+                  ? () {
+                      widget.onAddToCart(quantity);
+                      Navigator.pop(context);
+                    }
+                  : null,
+              icon: const Icon(Icons.add_shopping_cart),
+              label: Text('Add to Cart ($quantity)'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CustomerScreenState extends State<CustomerScreen> {
   final TextEditingController searchController = TextEditingController();
   final ScrollController welcomeController = ScrollController();
@@ -159,6 +265,30 @@ class _CustomerScreenState extends State<CustomerScreen> {
     );
   }
 
+  Future<void> openProductDetails(
+    QueryDocumentSnapshot<Map<String, dynamic>> document,
+  ) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductDetailPage(
+          product: document.data(),
+          initialQuantity: cart[document.id] ?? 0,
+          onAddToCart: (quantity) {
+            if (!mounted) return;
+            setState(() {
+              if (quantity == 0) {
+                cart.remove(document.id);
+              } else {
+                cart[document.id] = quantity;
+              }
+            });
+          },
+        ),
+      ),
+    );
+  }
+
   Widget buildProductCard(
     QueryDocumentSnapshot<Map<String, dynamic>> document,
   ) {
@@ -180,9 +310,12 @@ class _CustomerScreenState extends State<CustomerScreen> {
         horizontal: 10,
         vertical: 5,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Row(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => openProductDetails(document),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
           children: [
             if (imageUrl.isNotEmpty)
               ClipRRect(
@@ -279,6 +412,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
               ),
             ),
           ],
+          ),
         ),
       ),
     );
