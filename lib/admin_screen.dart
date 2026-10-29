@@ -134,7 +134,8 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   int get subtotal => cart.values.fold(0, (n,p)=>n+(p['price'] as int)*(p['qty'] as int));
-  int get finalTotal => (subtotal - (int.tryParse(discount.text) ?? 0)).clamp(0, 1<<31);
+  int get itemDiscountTotal => cart.values.fold(0, (n,p)=>n+(((p['itemDiscount'] ?? 0) as num).toInt()*(p['qty'] as int)));
+  int get finalTotal => (subtotal - itemDiscountTotal - (int.tryParse(discount.text) ?? 0)).clamp(0, 1<<31);
 
   Future<void> checkout(bool thermal) async {
     if (cart.isEmpty) return;
@@ -150,11 +151,11 @@ class _AdminScreenState extends State<AdminScreen> {
     final expiryNote = (business['expiryNote'] ?? 'Please check product expiry dates at the time of delivery.').toString();
     final footerNote = (business['footerNote'] ?? 'Please keep this bill for your records and any expiry-related claim.').toString();
     final invNo = 'FNS-${now.millisecondsSinceEpoch}';
-    final items = cart.entries.map((e)=>{'productId':e.key,'name':e.value['name'],'price':e.value['price'],'qty':e.value['qty'],'amount':(e.value['price'] as int)*(e.value['qty'] as int)}).toList();
+    final items = cart.entries.map((e){ final rate=e.value['price'] as int; final qty=e.value['qty'] as int; final perItemDiscount=((e.value['itemDiscount'] ?? 0) as num).toInt(); return {'productId':e.key,'name':e.value['name'],'price':rate,'qty':qty,'itemDiscount':perItemDiscount,'discountAmount':perItemDiscount*qty,'amount':(rate-perItemDiscount)*qty}; }).toList();
     try {
       await FirebaseFirestore.instance.collection('invoices').add({
         'invoiceNo':invNo,'customerName':customer.text.trim(),'phone':phone.text.trim(),'address':address.text.trim(),
-        'items':items,'subtotal':subtotal,'discount':int.tryParse(discount.text) ?? 0,'total':finalTotal,
+        'items':items,'subtotal':subtotal,'itemDiscountTotal':itemDiscountTotal,'discount':int.tryParse(discount.text) ?? 0,'total':finalTotal,
         'createdAt':FieldValue.serverTimestamp(),
       });
       Uint8List? logoBytes;
@@ -168,9 +169,9 @@ class _AdminScreenState extends State<AdminScreen> {
           pw.Text('Phone: $businessPhone'),
           pw.Divider(), pw.Text('Invoice: $invNo'), pw.Text('Date: ${now.toString().substring(0,16)}'),
           pw.Text('Customer: ${customer.text}'), pw.Text('Phone: ${phone.text}'), pw.Text('Address: ${address.text}'), pw.SizedBox(height: 8),
-          pw.TableHelper.fromTextArray(headers:['S.No','Product','Qty','Rate','Amount'], data:[for(int i=0;i<items.length;i++) [ '${i+1}',items[i]['name'].toString(),items[i]['qty'].toString(),'Rs. ${items[i]['price']}','Rs. ${items[i]['amount']}']]),
+          pw.TableHelper.fromTextArray(headers:['S.No','Product','Qty','Rate','Disc./item','Amount'], data:[for(int i=0;i<items.length;i++) [ '${i+1}',items[i]['name'].toString(),items[i]['qty'].toString(),'Rs. ${items[i]['price']}','Rs. ${items[i]['itemDiscount']}','Rs. ${items[i]['amount']}']]),
           pw.SizedBox(height:8), pw.Align(alignment:pw.Alignment.centerRight,child:pw.Column(crossAxisAlignment:pw.CrossAxisAlignment.end,children:[
-            pw.Text('Subtotal: Rs. $subtotal'), pw.Text('Discount: Rs. ${int.tryParse(discount.text) ?? 0}'),
+            pw.Text('Subtotal: Rs. $subtotal'), pw.Text('Item discounts: Rs. $itemDiscountTotal'), pw.Text('Bill discount: Rs. ${int.tryParse(discount.text) ?? 0}'),
             pw.Text('TOTAL: Rs. $finalTotal',style:pw.TextStyle(fontWeight:pw.FontWeight.bold,fontSize:16)),
           ])), pw.SizedBox(height:15), pw.Center(child:pw.Text('Thank you for your business')),
         ])));
@@ -266,15 +267,45 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget billingTab()=>ListView(padding:const EdgeInsets.all(12),children:[
     const Text('NEW BILL / INVOICE',style:TextStyle(fontWeight:FontWeight.bold,fontSize:18)),
     field(customer,'Customer name'),field(phone,'Phone',type:TextInputType.phone),field(address,'Address'),
-    const Divider(),if(cart.isEmpty)const Text('Products tab se cart mein items add karein.'),
-    ...cart.entries.map((e)=>Card(child:ListTile(title:Text(e.value['name'].toString()),subtitle:Text('Rs. ${e.value['price']} × ${e.value['qty']} = Rs. ${(e.value['price'] as int)*(e.value['qty'] as int)}'),
-      trailing:Row(mainAxisSize:MainAxisSize.min,children:[
-        IconButton(onPressed:()=>setState(()=>e.value['qty']=(e.value['qty'] as int)>1?(e.value['qty'] as int)-1:1),icon:const Icon(Icons.remove_circle_outline)),
-        IconButton(onPressed:()=>setState(()=>e.value['qty']=(e.value['qty'] as int)+1),icon:const Icon(Icons.add_circle_outline)),
-        IconButton(onPressed:()=>setState(()=>cart.remove(e.key)),icon:const Icon(Icons.delete_outline,color:Colors.red)),
-      ])))),
-    field(discount,'Discount (Rs.)',type:TextInputType.number),
-    Text('Subtotal: Rs. $subtotal',style:const TextStyle(fontSize:16)),
+    const Divider(),if(cart.isEmpty)const Text('Products tab se items add karein.'),
+    ...cart.entries.map((e){
+      final rate=e.value['price'] as int;
+      final qty=e.value['qty'] as int;
+      final itemDiscount=((e.value['itemDiscount'] ?? 0) as num).toInt();
+      final lineTotal=(rate-itemDiscount)*qty;
+      return Card(
+        child:Padding(
+          padding:const EdgeInsets.all(10),
+          child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text(e.value['name'].toString(),style:const TextStyle(fontWeight:FontWeight.bold,fontSize:16)),
+            Text('Rate: Rs. $rate  ×  Qty: $qty'),
+            Text('Item discount: Rs. $itemDiscount each  |  Amount: Rs. $lineTotal',
+              style:const TextStyle(fontWeight:FontWeight.w600)),
+            const SizedBox(height:6),
+            Row(children:[
+              Expanded(child:TextFormField(
+                key:ValueKey('item-discount-${e.key}'),
+                initialValue:itemDiscount.toString(),
+                keyboardType:const TextInputType.numberWithOptions(decimal:false),
+                decoration:const InputDecoration(labelText:'Discount per item (Rs.)',border:OutlineInputBorder(),isDense:true),
+                onChanged:(v){
+                  final value=int.tryParse(v.trim());
+                  setState(()=>e.value['itemDiscount']=(value==null||value<0?0:value.clamp(0,rate)));
+                },
+              )),
+              IconButton(tooltip:'Decrease quantity',onPressed:()=>setState(()=>e.value['qty']=qty>1?qty-1:1),icon:const Icon(Icons.remove_circle_outline)),
+              Text('$qty'),
+              IconButton(tooltip:'Increase quantity',onPressed:()=>setState(()=>e.value['qty']=qty+1),icon:const Icon(Icons.add_circle_outline)),
+              IconButton(tooltip:'Remove item',onPressed:()=>setState(()=>cart.remove(e.key)),icon:const Icon(Icons.delete_outline,color:Colors.red)),
+            ]),
+          ]),
+        ),
+      );
+    }),
+    field(discount,'Additional bill discount (Rs.)',type:TextInputType.number),
+    Text('Subtotal (before discounts): Rs. $subtotal',style:const TextStyle(fontSize:16)),
+    Text('Item discounts: Rs. $itemDiscountTotal',style:const TextStyle(fontSize:16)),
+    Text('Bill discount: Rs. ${int.tryParse(discount.text) ?? 0}',style:const TextStyle(fontSize:16)),
     Text('Final Total: Rs. $finalTotal',style:const TextStyle(fontSize:22,fontWeight:FontWeight.bold)),
     const SizedBox(height:12),FilledButton.icon(onPressed:busy?null:()=>checkout(false),icon:const Icon(Icons.print),label:Text(busy?'Please wait...':'Save & Print A4')),
     OutlinedButton.icon(onPressed:busy?null:()=>checkout(true),icon:const Icon(Icons.receipt_long),label:const Text('Save & Print Thermal 80mm')),
