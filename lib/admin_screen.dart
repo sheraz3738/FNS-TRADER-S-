@@ -7,6 +7,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:printing/printing.dart';
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
+import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import 'package:share_plus/share_plus.dart';
@@ -137,6 +139,116 @@ class _AdminScreenState extends State<AdminScreen> {
   int get itemDiscountTotal => cart.values.fold(0, (n,p)=>n+(((p['itemDiscount'] ?? 0) as num).toInt()*(p['qty'] as int)));
   int get finalTotal => (subtotal - itemDiscountTotal - (int.tryParse(discount.text) ?? 0)).clamp(0, 1<<31);
 
+  Future<bool> _printThermalDirect({
+    required String businessName,
+    required String legalName,
+    required String businessAddress,
+    required String businessPhone,
+    required String invoiceNo,
+    required DateTime date,
+    required List<Map<String, dynamic>> items,
+    required int billSubtotal,
+    required int itemDiscounts,
+    required int billDiscount,
+    required int total,
+  }) async {
+    try {
+      final enabled = await PrintBluetoothThermal.bluetoothEnabled;
+      if (!enabled) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mobile Bluetooth on karein, phir dobara print karein.')),
+        );
+        return false;
+      }
+      final permissionGranted = await PrintBluetoothThermal.isPermissionBluetoothGranted;
+      if (!permissionGranted) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('FNS TRADERS ko Android Settings > Apps > Permissions mein Nearby devices/Bluetooth permission dein.')),
+        );
+        return false;
+      }
+      final paired = await PrintBluetoothThermal.pairedBluetooths;
+      if (paired.isEmpty) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pehle mobile Bluetooth Settings mein M80-LL printer pair karein.')),
+        );
+        return false;
+      }
+      final selected = await showDialog<BluetoothInfo>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Thermal printer select karein'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              shrinkWrap: true,
+              children: paired.map((device) => ListTile(
+                leading: const Icon(Icons.print),
+                title: Text(device.name),
+                subtitle: Text(device.macAdress),
+                onTap: () => Navigator.pop(dialogContext, device),
+              )).toList(),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          ],
+        ),
+      );
+      if (selected == null) return false;
+      final connected = await PrintBluetoothThermal.connect(macPrinterAddress: selected.macAdress);
+      if (!connected) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${selected.name} se connection nahi hua. Printer on aur paired hona chahiye.')),
+        );
+        return false;
+      }
+
+      final profile = await CapabilityProfile.load();
+      final generator = Generator(PaperSize.mm80, profile);
+      final bytes = <int>[];
+      bytes.addAll(generator.reset());
+      bytes.addAll(generator.text(legalName, styles: const PosStyles(align: PosAlign.center, bold: true)));
+      bytes.addAll(generator.text(businessName, styles: const PosStyles(align: PosAlign.center)));
+      bytes.addAll(generator.text(businessAddress, styles: const PosStyles(align: PosAlign.center)));
+      bytes.addAll(generator.text('Phone: $businessPhone', styles: const PosStyles(align: PosAlign.center)));
+      bytes.addAll(generator.hr());
+      bytes.addAll(generator.text('INVOICE: $invoiceNo', styles: const PosStyles(bold: true)));
+      bytes.addAll(generator.text('Date: ${date.toString().substring(0, 16)}'));
+      if (customer.text.trim().isNotEmpty) bytes.addAll(generator.text('Customer: ${customer.text.trim()}'));
+      if (phone.text.trim().isNotEmpty) bytes.addAll(generator.text('Mobile: ${phone.text.trim()}'));
+      if (address.text.trim().isNotEmpty) bytes.addAll(generator.text('Address: ${address.text.trim()}'));
+      bytes.addAll(generator.hr());
+      bytes.addAll(generator.text('ITEMS', styles: const PosStyles(bold: true)));
+      for (var i = 0; i < items.length; i++) {
+        final item = items[i];
+        bytes.addAll(generator.text('${i + 1}. ${item['name']}', styles: const PosStyles(bold: true)));
+        bytes.addAll(generator.row([
+          PosColumn(text: '${item['qty']} x ${item['price']}', width: 7),
+          PosColumn(text: 'Rs. ${item['amount']}', width: 5, styles: const PosStyles(align: PosAlign.right)),
+        ]));
+        final itemDiscount = (item['itemDiscount'] as num?)?.toInt() ?? 0;
+        if (itemDiscount > 0) bytes.addAll(generator.text('  Discount/item: Rs. $itemDiscount'));
+      }
+      bytes.addAll(generator.hr());
+      bytes.addAll(generator.text('Subtotal: Rs. $billSubtotal', styles: const PosStyles(align: PosAlign.right)));
+      if (itemDiscounts > 0) bytes.addAll(generator.text('Item discount: Rs. $itemDiscounts', styles: const PosStyles(align: PosAlign.right)));
+      if (billDiscount > 0) bytes.addAll(generator.text('Bill discount: Rs. $billDiscount', styles: const PosStyles(align: PosAlign.right)));
+      bytes.addAll(generator.text('TOTAL: Rs. $total', styles: const PosStyles(align: PosAlign.right, bold: true, height: PosTextSize.size2, width: PosTextSize.size2)));
+      bytes.addAll(generator.feed(3));
+      bytes.addAll(generator.text('Thank you for your order!', styles: const PosStyles(align: PosAlign.center, bold: true)));
+      bytes.addAll(generator.feed(3));
+      final printed = await PrintBluetoothThermal.writeBytes(bytes);
+      if (!printed && mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Printer connect hua, lekin print command confirm nahi hui.')),
+      );
+      return printed;
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Thermal print error: $e')));
+      return false;
+    }
+  }
+
   Future<void> checkout(bool thermal) async {
     if (cart.isEmpty) return;
     setState(()=>busy=true);
@@ -175,8 +287,26 @@ class _AdminScreenState extends State<AdminScreen> {
             pw.Text('TOTAL: Rs. $finalTotal',style:pw.TextStyle(fontWeight:pw.FontWeight.bold,fontSize:16)),
           ])), pw.SizedBox(height:15), pw.Center(child:pw.Text('Thank you for your business')),
         ])));
-      await Printing.layoutPdf(onLayout: (_) async => doc.save());
-      if (mounted) setState(()=>cart.clear());
+      var printSucceeded = false;
+      if (thermal) {
+        printSucceeded = await _printThermalDirect(
+          businessName: businessName,
+          legalName: legalName,
+          businessAddress: businessAddress,
+          businessPhone: businessPhone,
+          invoiceNo: invNo,
+          date: now,
+          items: items,
+          billSubtotal: subtotal,
+          itemDiscounts: itemDiscountTotal,
+          billDiscount: int.tryParse(discount.text) ?? 0,
+          total: finalTotal,
+        );
+      } else {
+        await Printing.layoutPdf(onLayout: (_) async => doc.save());
+        printSucceeded = true;
+      }
+      if (mounted && printSucceeded) setState(()=>cart.clear());
     } catch(e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Invoice/print error: $e')));
     } finally { if (mounted) setState(()=>busy=false); }
