@@ -165,6 +165,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
     final data = document.data();
     final name = (data['name'] ?? 'Product').toString();
     final price = ((data['netRate'] ?? data['price']) as num?)?.toInt() ?? 0;
+    final retailPrice = ((data['retailPrice'] ?? data['price']) as num?)?.toInt() ?? 0;
     final imageUrl = (data['imageUrl'] ?? '').toString();
     final quantity = cart[document.id] ?? 0;
     final isFavorite = favorites.contains(document.id);
@@ -215,10 +216,18 @@ class _CustomerScreenState extends State<CustomerScreen> {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    'Rs. $price',
+                    'Net Rate: Rs. $price',
                     style: const TextStyle(
                       color: Colors.green,
                       fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Retail Rate: Rs. $retailPrice',
+                    style: const TextStyle(
+                      color: Colors.blueGrey,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   Row(
