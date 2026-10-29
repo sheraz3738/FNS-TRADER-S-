@@ -683,8 +683,26 @@ class _AdminScreenState extends State<AdminScreen> {
           Padding(padding:const EdgeInsets.all(12),child:SizedBox(width:double.infinity,child:FilledButton.icon(
             onPressed:()=>editBusinessSettings(data),icon:const Icon(Icons.edit),label:const Text('Edit Business & Bill Settings')))),
         ])),
-        const Card(child:ListTile(leading:Icon(Icons.inventory_2,color:Colors.blue),title:Text('Product & Inventory'),subtitle:Text('Products tab se item, retail price aur stock; Inventory tab se purchase, sale aur expenses manage karein.'))),
-        const Card(child:ListTile(leading:Icon(Icons.receipt_long,color:Colors.blue),title:Text('Invoice settings'),subtitle:Text('Yahan bill ka tagline, expiry reminder aur footer text edit kar sakte hain.'))),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: ListTile(
+            leading: const Icon(Icons.inventory_2, color: Colors.blue),
+            title: const Text('Product & Inventory'),
+            subtitle: const Text('Products tab se item, retail price aur stock; Inventory tab se purchase, sale aur expenses manage karein.'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => setState(() => tab = 2),
+          ),
+        ),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: ListTile(
+            leading: const Icon(Icons.receipt_long, color: Colors.blue),
+            title: const Text('Invoice settings'),
+            subtitle: const Text('Bill tagline, expiry reminder aur footer text edit karein.'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => editBusinessSettings(data),
+          ),
+        ),
         FilledButton.icon(onPressed:()=>FirebaseAuth.instance.signOut(),icon:const Icon(Icons.logout),label:const Text('Log out')),
       ]);
     },
