@@ -71,6 +71,7 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
       const FavoriteScreen(),
       const MyOrdersScreen(),
       const AiSearchScreen(),
+      const CustomerProfileScreen(),
     ];
 
     return Scaffold(
@@ -91,8 +92,132 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
             icon: Icon(Icons.receipt_long), label: 'My Orders'),
           BottomNavigationBarItem(
             icon: Icon(Icons.auto_awesome), label: 'AI Search'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
+    );
+  }
+}
+
+
+class CustomerProfileScreen extends StatefulWidget {
+  const CustomerProfileScreen({super.key});
+
+  @override
+  State<CustomerProfileScreen> createState() => _CustomerProfileScreenState();
+}
+
+class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
+  final shopNameC = TextEditingController();
+  final addressC = TextEditingController();
+  bool loading = true;
+  bool saving = false;
+  bool loaded = false;
+  String contact = '';
+  String message = '';
+
+  @override
+  void initState() {
+    super.initState();
+    loadProfile();
+  }
+
+  Future<void> loadProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (mounted) setState(() { loading = false; message = 'Pehle login karein.'; });
+      return;
+    }
+    try {
+      final doc = await FirebaseFirestore.instance.collection('customers').doc(user.uid).get();
+      final data = doc.data() ?? {};
+      shopNameC.text = (data['shopName'] ?? '').toString();
+      addressC.text = (data['address'] ?? '').toString();
+      contact = (data['contact'] ?? '').toString();
+      loaded = true;
+    } catch (e) {
+      message = 'Profile load nahi ho saki: $e';
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> saveProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    if (shopNameC.text.trim().isEmpty || addressC.text.trim().isEmpty) {
+      setState(() => message = 'Shop name aur address zaroor fill karein.');
+      return;
+    }
+    setState(() { saving = true; message = ''; });
+    try {
+      await FirebaseFirestore.instance.collection('customers').doc(user.uid).set({
+        'shopName': shopNameC.text.trim(),
+        'address': addressC.text.trim(),
+        'contact': contact,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      if (mounted) setState(() => message = 'Profile successfully update ho gayi.');
+    } catch (e) {
+      if (mounted) setState(() => message = 'Save nahi ho saka: $e');
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    shopNameC.dispose();
+    addressC.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    return Scaffold(
+      appBar: AppBar(title: const Text('My Profile')),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : user == null
+              ? Center(child: Text(message))
+              : !loaded
+                  ? Center(child: Text(message.isEmpty ? 'Profile available nahi.' : message))
+                  : ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        const CircleAvatar(radius: 38, child: Icon(Icons.person, size: 42)),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: shopNameC,
+                          decoration: const InputDecoration(labelText: 'Shop Name', border: OutlineInputBorder(), prefixIcon: Icon(Icons.store)),
+                        ),
+                        const SizedBox(height: 14),
+                        TextField(
+                          controller: addressC,
+                          maxLines: 3,
+                          decoration: const InputDecoration(labelText: 'Shop Address', border: OutlineInputBorder(), prefixIcon: Icon(Icons.location_on)),
+                        ),
+                        const SizedBox(height: 14),
+                        InputDecorator(
+                          decoration: const InputDecoration(labelText: 'Registered Mobile Number', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone)),
+                          child: Text(contact.isEmpty ? 'Not available' : contact),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('Mobile number login ke liye use hota hai, is liye filhal yahan change nahi hoga.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          onPressed: saving ? null : saveProfile,
+                          icon: saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save),
+                          label: Text(saving ? 'Saving...' : 'Save Changes'),
+                        ),
+                        if (message.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(message, style: TextStyle(color: message.startsWith('Profile successfully') ? Colors.green : Colors.red)),
+                        ],
+                      ],
+                    ),
     );
   }
 }
