@@ -12,7 +12,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,84 +28,12 @@ jobs:
           flutter-version: '3.35.0'
           channel: stable
 
-      - name: Create fresh Android project
+      - name: Create Android project
         run: |
           flutter create --platforms=android --org com.fnstraders temp_project
           rm -rf android
           cp -r temp_project/android android
           rm -rf temp_project
-
-      - name: Set Kotlin plugin version
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          p = Path("android/settings.gradle")
-          if not p.exists():
-              p = Path("android/settings.gradle.kts")
-
-          if not p.exists():
-              raise SystemExit("Android settings file not found")
-
-          s = p.read_text()
-
-          patterns = [
-              r'(id\(["\']org\.jetbrains\.kotlin\.android["\']\)\s+version\s+)["\'][^"\']+["\']',
-              r'(id\s+["\']org\.jetbrains\.kotlin\.android["\']\s+version\s+)["\'][^"\']+["\']',
-              r'(id\(["\']org\.jetbrains\.kotlin\.android["\']\s*,\s*version\s*=\s*)["\'][^"\']+["\']'
-          ]
-
-          count = 0
-          for pattern in patterns:
-              s, count = re.subn(pattern, r'\g<1>"2.3.0"', s)
-              if count:
-                  break
-
-          if count == 0:
-              raise SystemExit("Could not update Kotlin plugin version")
-
-          p.write_text(s)
-          print("Kotlin plugin version updated.")
-          PY
-
-      - name: Fix Kotlin compiler options
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          p = Path("android/app/build.gradle.kts")
-          s = p.read_text()
-
-          pattern = r'(?ms)^[ \t]*kotlinOptions\s*\{\s*jvmTarget\s*=\s*JavaVersion\.VERSION_(11|17)\.toString\(\)\s*\}\s*'
-          matches = list(re.finditer(pattern, s))
-
-          if not matches:
-              raise SystemExit("Could not find the old kotlinOptions block")
-
-          targets = [m.group(1) for m in matches]
-          s = re.sub(pattern, "", s)
-
-          target = "17" if "17" in targets else "11"
-
-          if not re.search(r'(?m)^kotlin\s*\{', s):
-              s += (
-                  "\n\nkotlin {\n"
-                  "    compilerOptions {\n"
-                  f"        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_{target})\n"
-                  "    }\n"
-                  "}\n"
-              )
-          else:
-              raise SystemExit(
-                  "A top-level kotlin block already exists; refusing to add a duplicate."
-              )
-
-          p.write_text(s)
-          print(f"Updated Kotlin compilerOptions to JVM {target}.")
-          PY
 
       - name: Enable AndroidX
         run: |
@@ -114,105 +41,7 @@ jobs:
           grep -q '^android.enableJetifier=' android/gradle.properties || echo 'android.enableJetifier=true' >> android/gradle.properties
 
       - name: Set app name
-        run: |
-          sed -i 's/android:label="[^"]*"/android:label="FNS TRADERS"/' android/app/src/main/AndroidManifest.xml
-
-      - name: Ensure release APK is signed
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          candidates = [Path("android/app/build.gradle.kts"), Path("android/app/build.gradle")]
-          p = next((x for x in candidates if x.exists()), None)
-          if p is None:
-              raise SystemExit("Android app Gradle file not found")
-          s = p.read_text()
-          pattern = r'(buildTypes\s*\{\s*release\s*\{)(.*?)(\n\s*\})'
-          m = re.search(pattern, s, re.S)
-          if not m:
-              raise SystemExit("Could not find release build type")
-          body = m.group(2)
-          if p.suffix == ".kts":
-              line = '            signingConfig = signingConfigs.getByName("debug")'
-              body = re.sub(r'(?m)^\s*signingConfig\s*=.*        run: |
-          test -f pubspec.yaml
-          test -f lib/main_customer.dart
-          test -f fns_logo.png
-
-      - name: Get dependencies
-        run: flutter pub get
-
-      - name: Build APK
-        run: flutter build apk --release --target lib/main_customer.dart
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: FNS-TRADERS-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
-          compression-level: 0
-
-      - name: Publish direct APK download
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          if gh release view customer-apk --repo "$GH_REPO" >/dev/null 2>&1; then
-            gh release delete customer-apk --repo "$GH_REPO" --yes
-          fi
-
-          gh release create customer-apk \
-            build/app/outputs/flutter-apk/app-release.apk \
-            --repo "$GH_REPO" \
-            --title "FNS TRADERS Customer APK" \
-            --notes "FNS TRADERS Customer Android App" \
-            --latest
-, '', body)
-          else:
-              line = '            signingConfig signingConfigs.debug'
-              body = re.sub(r'(?m)^\s*signingConfig\s+.*        run: |
-          test -f pubspec.yaml
-          test -f lib/main_customer.dart
-          test -f fns_logo.png
-
-      - name: Get dependencies
-        run: flutter pub get
-
-      - name: Build APK
-        run: flutter build apk --release --target lib/main_customer.dart
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: FNS-TRADERS-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
-          compression-level: 0
-
-      - name: Publish direct APK download
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          if gh release view customer-apk --repo "$GH_REPO" >/dev/null 2>&1; then
-            gh release delete customer-apk --repo "$GH_REPO" --yes
-          fi
-
-          gh release create customer-apk \
-            build/app/outputs/flutter-apk/app-release.apk \
-            --repo "$GH_REPO" \
-            --title "FNS TRADERS Customer APK" \
-            --notes "FNS TRADERS Customer Android App" \
-            --latest
-, '', body)
-          body = body.rstrip() + "\n" + line + "\n        "
-          s = s[:m.start(2)] + body + s[m.end(2):]
-          p.write_text(s)
-          print(f"Configured debug signing for release APK in {p}")
-          PY
+        run: sed -i 's/android:label="[^"]*"/android:label="FNS TRADERS"/' android/app/src/main/AndroidManifest.xml
 
       - name: Check required files
         run: |
@@ -226,6 +55,13 @@ jobs:
       - name: Build APK
         run: flutter build apk --release --target lib/main_customer.dart
 
+      - name: Verify APK signature
+        run: |
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          APKSIGNER=$(find "$ANDROID_SDK_ROOT/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify --verbose "$APK"
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -242,10 +78,4 @@ jobs:
           if gh release view customer-apk --repo "$GH_REPO" >/dev/null 2>&1; then
             gh release delete customer-apk --repo "$GH_REPO" --yes
           fi
-
-          gh release create customer-apk \
-            build/app/outputs/flutter-apk/app-release.apk \
-            --repo "$GH_REPO" \
-            --title "FNS TRADERS Customer APK" \
-            --notes "FNS TRADERS Customer Android App" \
-            --latest
+          gh release create customer-apk build/app/outputs/flutter-apk/app-release.apk --repo "$GH_REPO" --title "FNS TRADERS Customer APK" --notes "FNS TRADERS Customer Android App" --latest
