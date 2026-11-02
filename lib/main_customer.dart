@@ -71,6 +71,7 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
       const FavoriteScreen(),
       const MyOrdersScreen(),
       const AiSearchScreen(),
+      const ProfileSettingsScreen(),
     ];
 
     return Scaffold(
@@ -91,6 +92,8 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
             icon: Icon(Icons.receipt_long), label: 'My Orders'),
           BottomNavigationBarItem(
             icon: Icon(Icons.auto_awesome), label: 'AI Search'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
@@ -410,6 +413,252 @@ class MyOrdersScreen extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+
+class ProfileSettingsScreen extends StatefulWidget {
+  const ProfileSettingsScreen({super.key});
+
+  @override
+  State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
+}
+
+class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
+  final shopNameC = TextEditingController();
+  final addressC = TextEditingController();
+  final contactC = TextEditingController();
+  bool loading = true;
+  bool saving = false;
+  String? error;
+  bool loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    loadProfile();
+  }
+
+  Future<void> loadProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() { loading = false; error = 'Please login again.'; });
+      return;
+    }
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('customers').doc(user.uid).get();
+      final data = doc.data() ?? {};
+      shopNameC.text = (data['shopName'] ?? '').toString();
+      addressC.text = (data['address'] ?? '').toString();
+      contactC.text = (data['contact'] ?? '').toString();
+      loaded = true;
+    } catch (e) {
+      error = 'Profile load nahi ho saki: $e';
+    }
+    if (mounted) setState(() => loading = false);
+  }
+
+  Future<void> saveProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    if (shopNameC.text.trim().isEmpty ||
+        addressC.text.trim().isEmpty ||
+        contactC.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tamam fields fill karein.')),
+      );
+      return;
+    }
+    setState(() => saving = true);
+    try {
+      await FirebaseFirestore.instance.collection('customers').doc(user.uid).set({
+        'shopName': shopNameC.text.trim(),
+        'address': addressC.text.trim(),
+        'contact': contactC.text.trim(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile successfully update ho gayi.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Profile save nahi hui: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  Future<void> changePassword() async {
+    final currentC = TextEditingController();
+    final newC = TextEditingController();
+    final confirmC = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Change Password'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: currentC, obscureText: true,
+                decoration: const InputDecoration(labelText: 'Current Password')),
+              const SizedBox(height: 10),
+              TextField(controller: newC, obscureText: true,
+                decoration: const InputDecoration(labelText: 'New Password')),
+              const SizedBox(height: 10),
+              TextField(controller: confirmC, obscureText: true,
+                decoration: const InputDecoration(labelText: 'Confirm New Password')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Update')),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      final user = FirebaseAuth.instance.currentUser;
+      try {
+        if (user == null || user.email == null) throw Exception('Please login again.');
+        if (newC.text.length < 6) throw Exception('New password kam az kam 6 characters ka ho.');
+        if (newC.text != confirmC.text) throw Exception('New passwords match nahi karte.');
+        final credential = EmailAuthProvider.credential(
+          email: user.email!, password: currentC.text,
+        );
+        await user.reauthenticateWithCredential(credential);
+        await user.updatePassword(newC.text);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Password successfully change ho gaya.')),
+          );
+        }
+      } on FirebaseAuthException catch (e) {
+        if (mounted) {
+          final message = e.code == 'wrong-password' || e.code == 'invalid-credential'
+              ? 'Current password ghalat hai.'
+              : (e.message ?? 'Password update nahi ho saka.');
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        }
+      }
+    }
+    currentC.dispose();
+    newC.dispose();
+    confirmC.dispose();
+  }
+
+  @override
+  void dispose() {
+    shopNameC.dispose();
+    addressC.dispose();
+    contactC.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Profile & Settings')),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : user == null
+              ? const Center(child: Text('Please login to view your profile.'))
+              : !loaded
+                  ? Center(child: Text(error ?? 'Profile load nahi ho saki.'))
+                  : ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        const CircleAvatar(
+                          radius: 38,
+                          child: Icon(Icons.person, size: 42),
+                        ),
+                        const SizedBox(height: 18),
+                        TextField(
+                          controller: shopNameC,
+                          decoration: const InputDecoration(
+                            labelText: 'Shop Name',
+                            prefixIcon: Icon(Icons.store),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: contactC,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(
+                            labelText: 'Contact Number (for orders)',
+                            prefixIcon: Icon(Icons.phone),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Note: Contact number update hoga; login number change nahi hoga.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: addressC,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            labelText: 'Shop Address',
+                            prefixIcon: Icon(Icons.location_on),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        ElevatedButton.icon(
+                          onPressed: saving ? null : saveProfile,
+                          icon: const Icon(Icons.save),
+                          label: Text(saving ? 'Saving...' : 'Save Profile'),
+                        ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: changePassword,
+                          icon: const Icon(Icons.lock_reset),
+                          label: const Text('Change Password'),
+                        ),
+                        const Divider(height: 30),
+                        ListTile(
+                          leading: const Icon(Icons.logout, color: Colors.red),
+                          title: const Text('Logout'),
+                          onTap: () async {
+                            final yes = await showDialog<bool>(
+                              context: context,
+                              builder: (dialogContext) => AlertDialog(
+                                title: const Text('Logout'),
+                                content: const Text('Kya aap logout karna chahte hain?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(dialogContext, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.pop(dialogContext, true),
+                                    child: const Text('Logout'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (yes == true) await FirebaseAuth.instance.signOut();
+                          },
+                        ),
+                      ],
+                    ),
     );
   }
 }
