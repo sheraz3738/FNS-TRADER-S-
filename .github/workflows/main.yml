@@ -35,6 +35,11 @@ jobs:
           cp -r temp_project/android android
           rm -rf temp_project
 
+      - name: Update Kotlin Gradle plugin
+        run: |
+          sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "2.3.0"/' android/settings.gradle
+          grep 'org.jetbrains.kotlin.android' android/settings.gradle
+
       - name: Enable AndroidX
         run: |
           grep -q '^android.useAndroidX=' android/gradle.properties || echo 'android.useAndroidX=true' >> android/gradle.properties
