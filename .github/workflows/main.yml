@@ -42,10 +42,20 @@ jobs:
 
       - name: Migrate Kotlin JVM target DSL
         run: |
-          sed -i '1i import org.jetbrains.kotlin.gradle.dsl.JvmTarget' android/app/build.gradle.kts
-          sed -i 's/kotlinOptions[[:space:]]*{/compilerOptions {/' android/app/build.gradle.kts
-          sed -i 's/jvmTarget = JavaVersion.VERSION_11.toString()/jvmTarget.set(JvmTarget.JVM_11)/' android/app/build.gradle.kts
-          grep -n -E 'compilerOptions|jvmTarget|kotlinOptions' android/app/build.gradle.kts
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("android/app/build.gradle.kts")
+          s = p.read_text()
+          s, n = re.subn(r'(?m)^\\s*kotlinOptions\\s*\\{\\s*\\n\\s*jvmTarget\\s*=\\s*JavaVersion\\.VERSION_11\\.toString\\(\\)\\s*\\n\\s*\\}\\s*\\n?', '', s, count=1)
+          if n != 1:
+              raise SystemExit("Could not find the expected kotlinOptions JVM target block")
+          if "import org.jetbrains.kotlin.gradle.dsl.JvmTarget" not in s:
+              s = "import org.jetbrains.kotlin.gradle.dsl.JvmTarget\\n" + s
+          s += "\\nkotlin {\\n    compilerOptions {\\n        jvmTarget.set(JvmTarget.JVM_11)\\n    }\\n}\\n"
+          p.write_text(s)
+          PY
+          tail -n 12 android/app/build.gradle.kts
 
       - name: Enable AndroidX
         run: |
