@@ -71,6 +71,7 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
       const FavoriteScreen(),
       const MyOrdersScreen(),
       const AiSearchScreen(),
+      const CustomerProfileScreen(),
     ];
 
     return Scaffold(
@@ -91,6 +92,8 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
             icon: Icon(Icons.receipt_long), label: 'My Orders'),
           BottomNavigationBarItem(
             icon: Icon(Icons.auto_awesome), label: 'AI Search'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
@@ -320,6 +323,134 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+class CustomerProfileScreen extends StatefulWidget {
+  const CustomerProfileScreen({super.key});
+
+  @override
+  State<CustomerProfileScreen> createState() => _CustomerProfileScreenState();
+}
+
+class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
+  final shopNameC = TextEditingController();
+  final addressC = TextEditingController();
+  bool loading = true;
+  bool saving = false;
+  String error = '';
+  String success = '';
+  String contact = '';
+
+  @override
+  void initState() {
+    super.initState();
+    loadProfile();
+  }
+
+  Future<void> loadProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() { loading = false; error = 'Pehle login karein.'; });
+      return;
+    }
+    try {
+      final doc = await FirebaseFirestore.instance.collection('customers').doc(user.uid).get();
+      final data = doc.data() ?? {};
+      shopNameC.text = (data['shopName'] ?? '').toString();
+      addressC.text = (data['address'] ?? '').toString();
+      contact = (data['contact'] ?? '').toString();
+    } catch (e) {
+      error = 'Profile load nahi ho saka: $e';
+    }
+    if (mounted) setState(() => loading = false);
+  }
+
+  Future<void> saveProfile() async {
+    FocusScope.of(context).unfocus();
+    if (shopNameC.text.trim().isEmpty || addressC.text.trim().isEmpty) {
+      setState(() { error = 'Shop name aur address zaroor fill karein.'; success = ''; });
+      return;
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    setState(() { saving = true; error = ''; success = ''; });
+    try {
+      await FirebaseFirestore.instance.collection('customers').doc(user.uid).update({
+        'shopName': shopNameC.text.trim(),
+        'address': addressC.text.trim(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (mounted) setState(() => success = 'Profile update ho gayi.');
+    } catch (e) {
+      if (mounted) setState(() => error = 'Save nahi hua: $e');
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  Future<void> signOut() async {
+    await FirebaseAuth.instance.signOut();
+  }
+
+  @override
+  void dispose() {
+    shopNameC.dispose();
+    addressC.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('My Profile')),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                const CircleAvatar(radius: 38, child: Icon(Icons.person, size: 42)),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: shopNameC,
+                  decoration: const InputDecoration(labelText: 'Shop Name', border: OutlineInputBorder(), prefixIcon: Icon(Icons.store)),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: addressC,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: 'Shop Address', border: OutlineInputBorder(), prefixIcon: Icon(Icons.location_on)),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  readOnly: true,
+                  controller: TextEditingController(text: contact),
+                  decoration: const InputDecoration(labelText: 'Registered Mobile Number', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone), helperText: 'Login number change karne se login details bhi badalti hain.'),
+                ),
+                if (error.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(error, style: const TextStyle(color: Colors.red)),
+                ],
+                if (success.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(success, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                ],
+                const SizedBox(height: 18),
+                ElevatedButton.icon(
+                  onPressed: saving ? null : saveProfile,
+                  icon: const Icon(Icons.save),
+                  label: Text(saving ? 'Saving...' : 'Save Profile'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: signOut,
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Logout'),
+                ),
+              ],
+            ),
     );
   }
 }

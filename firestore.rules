@@ -31,7 +31,9 @@ service cloud.firestore {
     match /customers/{customerId} {
       allow create: if signedIn() && request.auth.uid == customerId;
       allow read: if isFnsAdmin() || (signedIn() && request.auth.uid == customerId);
-      allow update, delete: if isFnsAdmin();
+      allow update: if isFnsAdmin() || (signedIn() && request.auth.uid == customerId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['shopName', 'address', 'updatedAt']));
+      allow delete: if isFnsAdmin();
     }
 
     // Customers can place/view only their own orders; admin can manage orders.
