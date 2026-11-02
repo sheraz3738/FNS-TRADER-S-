@@ -117,6 +117,103 @@ jobs:
         run: |
           sed -i 's/android:label="[^"]*"/android:label="FNS TRADERS"/' android/app/src/main/AndroidManifest.xml
 
+      - name: Ensure release APK is signed
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          candidates = [Path("android/app/build.gradle.kts"), Path("android/app/build.gradle")]
+          p = next((x for x in candidates if x.exists()), None)
+          if p is None:
+              raise SystemExit("Android app Gradle file not found")
+          s = p.read_text()
+          pattern = r'(buildTypes\s*\{\s*release\s*\{)(.*?)(\n\s*\})'
+          m = re.search(pattern, s, re.S)
+          if not m:
+              raise SystemExit("Could not find release build type")
+          body = m.group(2)
+          if p.suffix == ".kts":
+              line = '            signingConfig = signingConfigs.getByName("debug")'
+              body = re.sub(r'(?m)^\s*signingConfig\s*=.*        run: |
+          test -f pubspec.yaml
+          test -f lib/main_customer.dart
+          test -f fns_logo.png
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release --target lib/main_customer.dart
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FNS-TRADERS-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Publish direct APK download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view customer-apk --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release delete customer-apk --repo "$GH_REPO" --yes
+          fi
+
+          gh release create customer-apk \
+            build/app/outputs/flutter-apk/app-release.apk \
+            --repo "$GH_REPO" \
+            --title "FNS TRADERS Customer APK" \
+            --notes "FNS TRADERS Customer Android App" \
+            --latest
+, '', body)
+          else:
+              line = '            signingConfig signingConfigs.debug'
+              body = re.sub(r'(?m)^\s*signingConfig\s+.*        run: |
+          test -f pubspec.yaml
+          test -f lib/main_customer.dart
+          test -f fns_logo.png
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release --target lib/main_customer.dart
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FNS-TRADERS-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Publish direct APK download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view customer-apk --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release delete customer-apk --repo "$GH_REPO" --yes
+          fi
+
+          gh release create customer-apk \
+            build/app/outputs/flutter-apk/app-release.apk \
+            --repo "$GH_REPO" \
+            --title "FNS TRADERS Customer APK" \
+            --notes "FNS TRADERS Customer Android App" \
+            --latest
+, '', body)
+          body = body.rstrip() + "\n" + line + "\n        "
+          s = s[:m.start(2)] + body + s[m.end(2):]
+          p.write_text(s)
+          print(f"Configured debug signing for release APK in {p}")
+          PY
+
       - name: Check required files
         run: |
           test -f pubspec.yaml
