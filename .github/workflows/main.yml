@@ -40,6 +40,13 @@ jobs:
           sed -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "2.3.0"/' android/settings.gradle.kts
           grep 'org.jetbrains.kotlin.android' android/settings.gradle.kts
 
+      - name: Migrate Kotlin JVM target DSL
+        run: |
+          sed -i '1i import org.jetbrains.kotlin.gradle.dsl.JvmTarget' android/app/build.gradle.kts
+          sed -i 's/kotlinOptions[[:space:]]*{/compilerOptions {/' android/app/build.gradle.kts
+          sed -i 's/jvmTarget = JavaVersion.VERSION_11.toString()/jvmTarget.set(JvmTarget.JVM_11)/' android/app/build.gradle.kts
+          grep -n -E 'compilerOptions|jvmTarget|kotlinOptions' android/app/build.gradle.kts
+
       - name: Enable AndroidX
         run: |
           grep -q '^android.useAndroidX=' android/gradle.properties || echo 'android.useAndroidX=true' >> android/gradle.properties
