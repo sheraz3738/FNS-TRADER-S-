@@ -40,7 +40,14 @@ service cloud.firestore {
         && request.resource.data.customerId == request.auth.uid;
       allow read: if isFnsAdmin()
         || (signedIn() && resource.data.customerId == request.auth.uid);
-      allow update, delete: if isFnsAdmin();
+      allow update: if isFnsAdmin()
+        || (signedIn()
+          && resource.data.customerId == request.auth.uid
+          && resource.data.status == 'Pending'
+          && request.resource.data.status == 'Cancelled'
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status', 'cancelledAt', 'cancelledBy']));
+      allow delete: if isFnsAdmin();
     }
 
     // Short sequential numbers for customer orders and admin invoices.
