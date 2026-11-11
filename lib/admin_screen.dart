@@ -593,6 +593,40 @@ class _AdminScreenState extends State<AdminScreen> {
                           icon: const Icon(Icons.print),
                           label: const Text('Print Bill'),
                         ),
+                        OutlinedButton.icon(
+                          onPressed: ['Cancelled', 'Delivered'].contains(data['status']) ? null : () async {
+                            final yes = await showDialog<bool>(
+                              context: dialogContext,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Cancel Order?'),
+                                content: Text('Order ${data['orderNo'] ?? doc.id} cancel karna hai?'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+                                  FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yes, Cancel')),
+                                ],
+                              ),
+                            );
+                            if (yes != true) return;
+                            try {
+                              await doc.reference.update({
+                                'status': 'Cancelled',
+                                'cancelledAt': FieldValue.serverTimestamp(),
+                                'cancelledBy': 'admin',
+                              });
+                              data['status'] = 'Cancelled';
+                              setDialogState(() {});
+                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Order Cancelled')),
+                              );
+                            } catch (e) {
+                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Cancel nahi hua: $e')),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+                          label: const Text('Cancel Order'),
+                        ),
                         FilledButton.icon(
                           onPressed: (data['status'] ?? 'Pending') == 'Confirmed' ? null : () async {
                             try {
