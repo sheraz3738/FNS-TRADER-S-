@@ -262,9 +262,17 @@ class _AdminScreenState extends State<AdminScreen> {
     final tagline = (business['tagline'] ?? 'We Believe in Truth in Business').toString();
     final expiryNote = (business['expiryNote'] ?? 'Please check product expiry dates at the time of delivery.').toString();
     final footerNote = (business['footerNote'] ?? 'Please keep this bill for your records and any expiry-related claim.').toString();
-    final invNo = 'FNS-${now.millisecondsSinceEpoch}';
+    late final int invoiceNumber;
     final items = cart.entries.map((e){ final rate=e.value['price'] as int; final qty=e.value['qty'] as int; final perItemDiscount=((e.value['itemDiscount'] ?? 0) as num).toInt(); return {'productId':e.key,'name':e.value['name'],'price':rate,'qty':qty,'itemDiscount':perItemDiscount,'discountAmount':perItemDiscount*qty,'amount':(rate-perItemDiscount)*qty}; }).toList();
     try {
+      final invoiceCounter = FirebaseFirestore.instance.collection('counters').doc('invoices');
+      invoiceNumber = await FirebaseFirestore.instance.runTransaction<int>((transaction) async {
+        final counterSnapshot = await transaction.get(invoiceCounter);
+        final next = ((counterSnapshot.data()?['nextNumber'] ?? 1) as num).toInt();
+        transaction.set(invoiceCounter, {'nextNumber': next + 1}, SetOptions(merge: true));
+        return next;
+      });
+      final invNo = invoiceNumber.toString();
       await FirebaseFirestore.instance.collection('invoices').add({
         'invoiceNo':invNo,'customerName':customer.text.trim(),'phone':phone.text.trim(),'address':address.text.trim(),
         'items':items,'subtotal':subtotal,'itemDiscountTotal':itemDiscountTotal,'discount':int.tryParse(discount.text) ?? 0,'total':finalTotal,
@@ -417,7 +425,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 key:ValueKey('item-discount-${e.key}'),
                 initialValue:itemDiscount.toString(),
                 keyboardType:const TextInputType.numberWithOptions(decimal:false),
-                decoration:const InputDecoration(labelText:'Discount per item (Rs.)',border:OutlineInputBorder(),isDense:true),
+                decoration:const InputDecoration(labelText:'Item / Bracket Discount (Rs. each)',border:OutlineInputBorder(),isDense:true),
                 onChanged:(v){
                   final value=int.tryParse(v.trim());
                   setState(()=>e.value['itemDiscount']=(value==null||value<0?0:value.clamp(0,rate)));
@@ -471,7 +479,7 @@ class _AdminScreenState extends State<AdminScreen> {
           pw.Center(child: pw.Text('Phone: $businessPhone')),
           pw.Divider(),
           pw.Text('ORDER BILL', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-          pw.Text('Order No: $orderId'),
+          pw.Text('Order No: ${order['orderNo'] ?? orderId}'),
           pw.Text('Date: ${now.toString().substring(0, 16)}'),
           pw.Text('Customer / Shop: ${customerData['shopName'] ?? 'Customer'}'),
           pw.Text('Mobile: ${customerData['contact'] ?? ''}'),
@@ -551,7 +559,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   context: context,
                   builder: (dialogContext) => StatefulBuilder(
                     builder: (dialogContext, setDialogState) => AlertDialog(
-                      title: Text('Order ${doc.id}'),
+                      title: Text('Order ${data['orderNo'] ?? doc.id}'),
                       content: SingleChildScrollView(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -605,7 +613,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 );
               },
               leading: Icon(status == 'Confirmed' ? Icons.check_circle : Icons.shopping_bag, color: status == 'Confirmed' ? Colors.green : Colors.orange),
-              title: Text('Order ${doc.id}'),
+              title: Text('Order ${data['orderNo'] ?? doc.id}'),
               subtitle: Text(
                 '${data['customerName'] ?? data['customerEmail'] ?? 'Customer'}\n'
                 '$status\n'
