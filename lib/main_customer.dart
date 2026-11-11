@@ -391,9 +391,14 @@ class SimplePage extends StatelessWidget {
   );
 }
 
-class MyOrdersScreen extends StatelessWidget {
+class MyOrdersScreen extends StatefulWidget {
   const MyOrdersScreen({super.key});
 
+  @override
+  State<MyOrdersScreen> createState() => _MyOrdersScreenState();
+}
+
+class _MyOrdersScreenState extends State<MyOrdersScreen> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -426,6 +431,7 @@ class MyOrdersScreen extends StatelessWidget {
               final data = docs[index].data();
               final status = data['status'] ?? 'Pending';
               final items = (data['items'] as List?) ?? [];
+              final canCancel = status.toString().toLowerCase() == 'pending';
 
               return Card(
                 margin: const EdgeInsets.all(10),
@@ -438,6 +444,37 @@ class MyOrdersScreen extends StatelessWidget {
                     'Total: Rs. ${data['total'] ?? 0}',
                   ),
                   isThreeLine: true,
+                  trailing: canCancel ? TextButton(
+                    onPressed: () async {
+                      final yes = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Cancel Order?'),
+                          content: const Text('Kya aap ye order cancel karna chahte hain?'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+                            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yes, Cancel')),
+                          ],
+                        ),
+                      );
+                      if (yes != true) return;
+                      try {
+                        await docs[index].reference.update({
+                          'status': 'Cancelled',
+                          'cancelledAt': FieldValue.serverTimestamp(),
+                          'cancelledBy': 'customer',
+                        });
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Order cancel ho gaya.')),
+                        );
+                      } catch (e) {
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Cancel nahi hua: $e')),
+                        );
+                      }
+                    },
+                    child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+                  ) : Text(status.toString()),
                 ),
               );
             },
