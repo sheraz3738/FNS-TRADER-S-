@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -520,6 +521,9 @@ class _CustomerScreenState extends State<CustomerScreen> {
       setState(() {
         cart.clear();
       });
+
+      // Short confirmation sound after the order is successfully saved.
+      await SystemSound.play(SystemSoundType.alert);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
