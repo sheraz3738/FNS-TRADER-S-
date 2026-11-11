@@ -75,7 +75,7 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
     ];
 
     return Scaffold(
-      body: IndexedStack(index: currentIndex, children: pages),
+      body: pages[currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         type: BottomNavigationBarType.fixed,
