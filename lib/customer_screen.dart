@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+final Map<String, int> fnsCustomerCart = {};
+
 class CustomerScreen extends StatefulWidget {
   final VoidCallback? onOpenOrders;
 
@@ -129,7 +131,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
   String search = '';
   String selectedCategory = 'All Categories';
   static const List<String> categories = ['All Categories','Medicines','Syrups','Tablets/Capsules','Syringes','Surgical Items','BP & Sugar','General Items','Medical Equipment','Other Items'];
-  final Map<String, int> cart = {};
+  final Map<String, int> cart = fnsCustomerCart;
   final Set<String> favorites = {};
 
   Timer? welcomeTimer;
@@ -493,7 +495,15 @@ class _CustomerScreenState extends State<CustomerScreen> {
         customerProfile = profileDoc.data() ?? {};
       } catch (_) {}
 
+      final orderCounter = FirebaseFirestore.instance.collection('counters').doc('customer_orders');
+      final orderNo = await FirebaseFirestore.instance.runTransaction<int>((transaction) async {
+        final counterSnapshot = await transaction.get(orderCounter);
+        final next = ((counterSnapshot.data()?['nextNumber'] ?? 1) as num).toInt();
+        transaction.set(orderCounter, {'nextNumber': next + 1}, SetOptions(merge: true));
+        return next;
+      });
       await FirebaseFirestore.instance.collection('orders').add({
+        'orderNo': orderNo,
         'customerId': user.uid,
         'customerEmail': user.email ?? '',
         'customerName': customerProfile['shopName'] ?? '',
