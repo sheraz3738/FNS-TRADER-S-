@@ -43,6 +43,14 @@ service cloud.firestore {
       allow update, delete: if isFnsAdmin();
     }
 
+    // Short sequential numbers for customer orders and admin invoices.
+    match /counters/customer_orders {
+      allow read, write: if signedIn();
+    }
+    match /counters/invoices {
+      allow read, write: if isFnsAdmin();
+    }
+
     // Deny everything not explicitly allowed above.
     match /{document=**} {
       allow read, write: if false;
