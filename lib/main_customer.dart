@@ -75,7 +75,7 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
     ];
 
     return Scaffold(
-      body: pages[currentIndex],
+      body: IndexedStack(index: currentIndex, children: pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         type: BottomNavigationBarType.fixed,
@@ -327,11 +327,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
+  @override State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
   @override
-  Widget build(BuildContext context) => const SimplePage(
-      title: 'Cart', message: 'Home par products select karein.');
+  Widget build(BuildContext context) {
+    final entries = fnsCustomerCart.entries.toList();
+    return Scaffold(
+      appBar: AppBar(title: const Text('My Cart')),
+      body: entries.isEmpty
+          ? const Center(child: Text('Cart abhi khali hai. Home se products add karein.'))
+          : ListView(padding: const EdgeInsets.all(12), children: [
+              for (final entry in entries)
+                FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  future: FirebaseFirestore.instance.collection('products').doc(entry.key).get(),
+                  builder: (context, snapshot) {
+                    final product = snapshot.data?.data() ?? {};
+                    final name = (product['name'] ?? 'Product').toString();
+                    final rate = ((product['netRate'] ?? product['price']) as num?)?.toInt() ?? 0;
+                    return Card(child: ListTile(
+                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('Rs. ' + rate.toString() + ' × ' + entry.value.toString() + ' = Rs. ' + (rate * entry.value).toString()),
+                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        IconButton(onPressed: () => setState(() { if (entry.value <= 1) { fnsCustomerCart.remove(entry.key); } else { fnsCustomerCart[entry.key] = entry.value - 1; } }), icon: const Icon(Icons.remove_circle_outline)),
+                        Text(entry.value.toString()),
+                        IconButton(onPressed: () => setState(() { fnsCustomerCart[entry.key] = entry.value + 1; }), icon: const Icon(Icons.add_circle_outline, color: Colors.green)),
+                        IconButton(onPressed: () => setState(() => fnsCustomerCart.remove(entry.key)), icon: const Icon(Icons.delete_outline, color: Colors.red)),
+                      ]),
+                    ));
+                  },
+                ),
+            ]),
+    );
+  }
 }
 
 class FavoriteScreen extends StatelessWidget {
@@ -400,7 +431,7 @@ class MyOrdersScreen extends StatelessWidget {
                 margin: const EdgeInsets.all(10),
                 child: ListTile(
                   leading: const Icon(Icons.receipt_long),
-                  title: Text('Order ${docs[index].id}'),
+                  title: Text('Order ${data['orderNo'] ?? docs[index].id}'),
                   subtitle: Text(
                     'Status: $status\n'
                     'Items: ${items.length}\n'
