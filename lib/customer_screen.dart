@@ -624,38 +624,36 @@ class _CustomerScreenState extends State<CustomerScreen> {
   }
 
   Widget _buildMovableWhatsAppButton() {
-    return LayoutBuilder(builder: (context, constraints) {
-      final maxX = (constraints.maxWidth - 62).clamp(0.0, double.infinity);
-      final maxY = (constraints.maxHeight - 62).clamp(0.0, double.infinity);
-      final position = whatsappOffset ??
-          Offset(maxX, (maxY - 95).clamp(0.0, double.infinity));
-      final safePosition = Offset(
-        position.dx.clamp(0.0, maxX),
-        position.dy.clamp(0.0, maxY),
-      );
-      return Positioned(
-        left: safePosition.dx,
-        top: safePosition.dy,
-        child: GestureDetector(
-          onPanUpdate: (details) {
-            setState(() {
-              whatsappOffset = Offset(
-                (safePosition.dx + details.delta.dx).clamp(0.0, maxX),
-                (safePosition.dy + details.delta.dy).clamp(0.0, maxY),
-              );
-            });
-          },
-          child: FloatingActionButton(
-            heroTag: 'customer_whatsapp_fab',
-            backgroundColor: const Color(0xFF25D366),
-            foregroundColor: Colors.white,
-            tooltip: 'WhatsApp - drag to move',
-            onPressed: openWhatsApp,
-            child: const FaIcon(FontAwesomeIcons.whatsapp, size: 30),
-          ),
+    final screen = MediaQuery.of(context).size;
+    final maxX = (screen.width - 62).clamp(0.0, double.infinity).toDouble();
+    final maxY = (screen.height - 250).clamp(0.0, double.infinity).toDouble();
+    final position = whatsappOffset ?? Offset(maxX, maxY);
+    final safePosition = Offset(
+      position.dx.clamp(0.0, maxX).toDouble(),
+      position.dy.clamp(0.0, maxY).toDouble(),
+    );
+    return Positioned(
+      left: safePosition.dx,
+      top: safePosition.dy,
+      child: GestureDetector(
+        onPanUpdate: (details) {
+          setState(() {
+            whatsappOffset = Offset(
+              (safePosition.dx + details.delta.dx).clamp(0.0, maxX).toDouble(),
+              (safePosition.dy + details.delta.dy).clamp(0.0, maxY).toDouble(),
+            );
+          });
+        },
+        child: FloatingActionButton(
+          heroTag: 'customer_whatsapp_fab',
+          backgroundColor: const Color(0xFF25D366),
+          foregroundColor: Colors.white,
+          tooltip: 'WhatsApp - drag to move',
+          onPressed: openWhatsApp,
+          child: const FaIcon(FontAwesomeIcons.whatsapp, size: 30),
         ),
-      );
-    });
+      ),
+    );
   }
 
   @override
