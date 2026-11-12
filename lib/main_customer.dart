@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 
 import 'customer_screen.dart';
 import 'firebase_options.dart';
@@ -63,38 +64,57 @@ class MainCustomerWrapper extends StatefulWidget {
 class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
   int currentIndex = 0;
 
+  Future<void> _confirmExit() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Exit App?'),
+        content: const Text('Kya aap FNS TRADERS se exit karna chahte hain?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    );
+    if (shouldExit == true) {
+      await SystemNavigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = [
-      CustomerScreen(onOpenOrders: () => setState(() => currentIndex = 3)),
+      CustomerScreen(onOpenOrders: () => setState(() => currentIndex = 2)),
       const CartScreen(),
-      const FavoriteScreen(),
       const MyOrdersScreen(),
       const AiSearchScreen(),
-      const ProfileSettingsScreen(),
     ];
 
-    return Scaffold(
-      body: pages[currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.green.shade700,
-        onTap: (i) => setState(() => currentIndex = i),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart), label: 'Cart'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.favorite), label: 'Favorite'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long), label: 'My Orders'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.auto_awesome), label: 'AI Search'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person), label: 'Profile'),
-        ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _confirmExit();
+      },
+      child: Scaffold(
+        body: pages[currentIndex],
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: currentIndex,
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: Colors.green.shade700,
+          onTap: (i) => setState(() => currentIndex = i),
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
+            BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'My Orders'),
+            BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: 'AI'),
+          ],
+        ),
       ),
     );
   }
@@ -372,11 +392,130 @@ class FavoriteScreen extends StatelessWidget {
       title: 'Favorite', message: 'Favorite products yahan dikhaye jayenge.');
 }
 
-class AiSearchScreen extends StatelessWidget {
+class AiSearchScreen extends StatefulWidget {
   const AiSearchScreen({super.key});
+
   @override
-  Widget build(BuildContext context) => const SimplePage(
-      title: 'AI Search', message: 'AI Search feature abhi connect nahi hai.');
+  State<AiSearchScreen> createState() => _AiSearchScreenState();
+}
+
+class _AiSearchScreenState extends State<AiSearchScreen> {
+  String selected = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('AI Products')),
+      body: Column(
+        children: [
+          if (selected.isEmpty) ...[
+            const SizedBox(height: 24),
+            _choiceCard(
+              icon: Icons.trending_up,
+              title: 'Trending',
+              subtitle: 'Popular products',
+              onTap: () => setState(() => selected = 'Trending'),
+            ),
+            _choiceCard(
+              icon: Icons.lightbulb_outline,
+              title: 'Suggestions',
+              subtitle: 'Recommended products',
+              onTap: () => setState(() => selected = 'Suggestions'),
+            ),
+          ] else ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => setState(() => selected = ''),
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                  Text(selected, style: const TextStyle(
+                    fontSize: 20, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance.collection('products').snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return const Center(child: Text('Products load nahi ho sake.'));
+                  }
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final docs = snapshot.data!.docs;
+                  final flag = selected == 'Trending' ? 'isTrending' : 'isSuggested';
+                  final marked = docs.where((d) => d.data()[flag] == true).toList();
+                  final shown = marked.isNotEmpty ? marked : docs;
+                  if (shown.isEmpty) {
+                    return const Center(child: Text('Abhi products available nahi hain.'));
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(10),
+                    itemCount: shown.length,
+                    itemBuilder: (context, index) {
+                      final doc = shown[index];
+                      final data = doc.data();
+                      final name = (data['name'] ?? 'Product').toString();
+                      final price = ((data['netRate'] ?? data['price']) as num?)?.toInt() ?? 0;
+                      final imageUrl = (data['imageUrl'] ?? '').toString();
+                      return Card(
+                        child: ListTile(
+                          leading: imageUrl.isEmpty
+                            ? const Icon(Icons.medication, size: 42)
+                            : ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(imageUrl, width: 52, height: 52, fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Icon(Icons.medication, size: 42)),
+                              ),
+                          title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('Rs. $price'),
+                          trailing: IconButton(
+                            tooltip: 'Add to Cart',
+                            icon: const Icon(Icons.add_shopping_cart, color: Colors.green),
+                            onPressed: () {
+                              setState(() {
+                                fnsCustomerCart[doc.id] = (fnsCustomerCart[doc.id] ?? 0) + 1;
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('$name cart mein add ho gaya.')),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _choiceCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(18),
+        leading: Icon(icon, color: Colors.green, size: 34),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
+      ),
+    );
+  }
 }
 
 class SimplePage extends StatelessWidget {
