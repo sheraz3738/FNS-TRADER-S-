@@ -1,4 +1,5 @@
 name: Build FNS TRADERS APK
+# Rebuild customer APK after SafeArea syntax correction
 
 on:
   workflow_dispatch:
