@@ -139,12 +139,14 @@ class CustomerScreen extends StatefulWidget {
   final VoidCallback? onOpenOrders;
   final VoidCallback? onOpenCart;
   final VoidCallback? onOpenProfile;
+  final VoidCallback? onOpenAi;
 
   const CustomerScreen({
     super.key,
     this.onOpenOrders,
     this.onOpenCart,
     this.onOpenProfile,
+    this.onOpenAi,
   });
 
   @override
@@ -324,14 +326,6 @@ class _CustomerScreenState extends State<CustomerScreen> {
   Widget buildHeader() {
     return Column(
       children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Builder(builder: (context) => IconButton(
-            tooltip: 'Menu',
-            icon: const Icon(Icons.menu, size: 28),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          )),
-        ),
         Container(
           height: 44,
           width: double.infinity,
@@ -565,71 +559,6 @@ class _CustomerScreenState extends State<CustomerScreen> {
     if (mounted) setState(() {});
   }
 
-  Widget _buildCustomerDrawer() {
-    return Drawer(
-      child: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: Colors.green.shade700),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: const [
-                  Icon(Icons.store, color: Colors.white, size: 38),
-                  SizedBox(height: 8),
-                  Text('FNS TRADERS', style: TextStyle(
-                    color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text('Customer Menu', style: TextStyle(color: Colors.white70)),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Home'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.shopping_cart),
-              title: const Text('My Cart'),
-              onTap: () { Navigator.pop(context); widget.onOpenCart?.call(); },
-            ),
-            ListTile(
-              leading: const Icon(Icons.receipt_long),
-              title: const Text('My Orders'),
-              onTap: () { Navigator.pop(context); widget.onOpenOrders?.call(); },
-            ),
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: const Text('Profile & Settings'),
-              onTap: () { Navigator.pop(context); widget.onOpenProfile?.call(); },
-            ),
-            ListTile(
-              leading: const Icon(Icons.help_outline),
-              title: const Text('Help & Support'),
-              onTap: () { Navigator.pop(context); openWhatsApp(); },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('About FNS TRADERS'),
-              onTap: () {
-                Navigator.pop(context);
-                showAboutDialog(
-                  context: context,
-                  applicationName: 'FNS TRADERS',
-                  applicationVersion: 'Customer App',
-                  children: const [Text('BABA FALAK NAZ & SONS TRADERS')],
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildMovableWhatsAppButton() {
     final screen = MediaQuery.of(context).size;
     final maxX = (screen.width - 62).clamp(0.0, double.infinity).toDouble();
@@ -666,13 +595,28 @@ class _CustomerScreenState extends State<CustomerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: _buildCustomerDrawer(),
       body: Stack(
         children: [
           SafeArea(
         child: Column(
           children: [
             buildHeader(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: widget.onOpenAi,
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: const Text('AI Trending / Suggestions'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.green.shade800,
+                    side: BorderSide(color: Colors.green.shade700),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                  ),
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.all(10),
               child: TextField(
@@ -817,11 +761,21 @@ class SlideToOrderButton extends StatefulWidget {
 class _SlideToOrderButtonState extends State<SlideToOrderButton> {
   double value = 0;
   @override Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-    decoration: BoxDecoration(color: Colors.green.shade700, borderRadius: BorderRadius.circular(14)),
-    child: Column(children: [
-      Text('Slide to Place Order (${widget.itemCount} items)', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      SliderTheme(data: SliderTheme.of(context).copyWith(activeTrackColor: Colors.white, inactiveTrackColor: Colors.white54, thumbColor: Colors.white, overlayColor: Colors.white24),
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    decoration: BoxDecoration(color: Colors.green.shade700, borderRadius: BorderRadius.circular(18)),
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Text('Slide to Place Order (${widget.itemCount} items)',
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+      const SizedBox(height: 5),
+      SliderTheme(data: SliderTheme.of(context).copyWith(
+        trackHeight: 10,
+        activeTrackColor: Colors.white,
+        inactiveTrackColor: Colors.white54,
+        thumbColor: Colors.white,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 15),
+        overlayColor: Colors.white24,
+      ),
         child: Slider(value: value, min: 0, max: 1, onChanged: widget.itemCount == 0 ? null : (v) {
           setState(() => value = v);
           if (v >= 0.98) { setState(() => value = 0); widget.onComplete(); }
