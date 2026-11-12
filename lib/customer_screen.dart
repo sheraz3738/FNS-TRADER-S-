@@ -800,6 +800,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
             ),
           ],
         ),
+          ),
           _buildMovableWhatsAppButton(),
         ],
       ),
