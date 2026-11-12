@@ -93,13 +93,12 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
       CustomerScreen(
         onOpenCart: () => setState(() => currentIndex = 1),
         onOpenOrders: () => setState(() => currentIndex = 2),
-        onOpenProfile: () => setState(() => currentIndex = 5),
+        onOpenProfile: () => setState(() => currentIndex = 4),
         onOpenAi: () => setState(() => currentIndex = 3),
       ),
       CartScreen(onOrderPlaced: () => setState(() => currentIndex = 2)),
       const MyOrdersScreen(),
-      const AiSearchScreen(initialCategory: 'Trending'),
-      const AiSearchScreen(initialCategory: 'Suggestions'),
+      const AiSearchScreen(),
       const ProfileSettingsScreen(),
     ];
 
@@ -119,8 +118,7 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
             BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'My Orders'),
-            BottomNavigationBarItem(icon: Icon(Icons.trending_up), label: 'Trending'),
-            BottomNavigationBarItem(icon: Icon(Icons.lightbulb_outline), label: 'Suggestions'),
+            BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: 'AI'),
             BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
           ],
         ),
