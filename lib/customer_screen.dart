@@ -4,15 +4,20 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 final Map<String, int> fnsCustomerCart = {};
 
 class CustomerScreen extends StatefulWidget {
   final VoidCallback? onOpenOrders;
+  final VoidCallback? onOpenCart;
+  final VoidCallback? onOpenProfile;
 
   const CustomerScreen({
     super.key,
     this.onOpenOrders,
+    this.onOpenCart,
+    this.onOpenProfile,
   });
 
   @override
@@ -137,6 +142,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
   final Set<String> favorites = {};
 
   Timer? welcomeTimer;
+  Offset? whatsappOffset;
 
   @override
   void initState() {
@@ -191,6 +197,14 @@ class _CustomerScreenState extends State<CustomerScreen> {
   Widget buildHeader() {
     return Column(
       children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Builder(builder: (context) => IconButton(
+            tooltip: 'Menu',
+            icon: const Icon(Icons.menu, size: 28),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          )),
+        ),
         Container(
           height: 44,
           width: double.infinity,
@@ -543,10 +557,114 @@ class _CustomerScreenState extends State<CustomerScreen> {
     }
   }
 
+
+  Widget _buildCustomerDrawer() {
+    return Drawer(
+      child: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(color: Colors.green.shade700),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: const [
+                  Icon(Icons.store, color: Colors.white, size: 38),
+                  SizedBox(height: 8),
+                  Text('FNS TRADERS', style: TextStyle(
+                    color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text('Customer Menu', style: TextStyle(color: Colors.white70)),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Home'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.shopping_cart),
+              title: const Text('My Cart'),
+              onTap: () { Navigator.pop(context); widget.onOpenCart?.call(); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.receipt_long),
+              title: const Text('My Orders'),
+              onTap: () { Navigator.pop(context); widget.onOpenOrders?.call(); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: const Text('Profile & Settings'),
+              onTap: () { Navigator.pop(context); widget.onOpenProfile?.call(); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.help_outline),
+              title: const Text('Help & Support'),
+              onTap: () { Navigator.pop(context); openWhatsApp(); },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('About FNS TRADERS'),
+              onTap: () {
+                Navigator.pop(context);
+                showAboutDialog(
+                  context: context,
+                  applicationName: 'FNS TRADERS',
+                  applicationVersion: 'Customer App',
+                  children: const [Text('BABA FALAK NAZ & SONS TRADERS')],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMovableWhatsAppButton() {
+    return LayoutBuilder(builder: (context, constraints) {
+      final maxX = (constraints.maxWidth - 62).clamp(0.0, double.infinity);
+      final maxY = (constraints.maxHeight - 62).clamp(0.0, double.infinity);
+      final position = whatsappOffset ??
+          Offset(maxX, (maxY - 95).clamp(0.0, double.infinity));
+      final safePosition = Offset(
+        position.dx.clamp(0.0, maxX),
+        position.dy.clamp(0.0, maxY),
+      );
+      return Positioned(
+        left: safePosition.dx,
+        top: safePosition.dy,
+        child: GestureDetector(
+          onPanUpdate: (details) {
+            setState(() {
+              whatsappOffset = Offset(
+                (safePosition.dx + details.delta.dx).clamp(0.0, maxX),
+                (safePosition.dy + details.delta.dy).clamp(0.0, maxY),
+              );
+            });
+          },
+          child: FloatingActionButton(
+            heroTag: 'customer_whatsapp_fab',
+            backgroundColor: const Color(0xFF25D366),
+            foregroundColor: Colors.white,
+            tooltip: 'WhatsApp - drag to move',
+            onPressed: openWhatsApp,
+            child: const FaIcon(FontAwesomeIcons.whatsapp, size: 30),
+          ),
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
+      drawer: _buildCustomerDrawer(),
+      body: Stack(
+        children: [
+          SafeArea(
         child: Column(
           children: [
             buildHeader(),
@@ -677,53 +795,15 @@ class _CustomerScreenState extends State<CustomerScreen> {
             ),
             Padding(
               padding: const EdgeInsets.all(10),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: SlideToOrderButton(itemCount: totalItems, onComplete: () => placeOrder(skipConfirmation: true)),
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: openWhatsApp,
-                          icon: const Icon(Icons.chat),
-                          label: const Text('WhatsApp'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'AI Search abhi connect nahi hai.',
-                                ),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.smart_toy),
-                          label: const Text('AI Search'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (widget.onOpenOrders != null)
-                    SizedBox(
-                      width: double.infinity,
-                      child: TextButton.icon(
-                        onPressed: widget.onOpenOrders,
-                        icon: const Icon(Icons.receipt_long),
-                        label: const Text('My Orders'),
-                      ),
-                    ),
-                ],
+              child: SizedBox(
+                width: double.infinity,
+                child: SlideToOrderButton(itemCount: totalItems, onComplete: () => placeOrder(skipConfirmation: true)),
               ),
             ),
           ],
         ),
+          _buildMovableWhatsAppButton(),
+        ],
       ),
     );
   }
