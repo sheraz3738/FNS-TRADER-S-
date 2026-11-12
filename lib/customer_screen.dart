@@ -749,3 +749,4 @@ class _SlideToOrderButtonState extends State<SlideToOrderButton> {
         })),
     ]),
   );
+}
