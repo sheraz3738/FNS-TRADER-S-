@@ -8,6 +8,133 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 final Map<String, int> fnsCustomerCart = {};
 
+Future<void> placeFNSCustomerOrder(
+  BuildContext context, {
+  required Map<String, int> cart,
+  required int totalItems,
+  bool skipConfirmation = false,
+  VoidCallback? onOrderPlaced,
+}) async {
+    if (cart.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pehle products cart mein add karein.'),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = skipConfirmation ? true : await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Order Confirm'),
+        content: Text(
+          'Kya aap $totalItems items ka order place karna chahte hain?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Place Order'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      final items = <Map<String, dynamic>>[];
+      int total = 0;
+
+      for (final entry in cart.entries) {
+        final productDoc = await FirebaseFirestore.instance
+            .collection('products')
+            .doc(entry.key)
+            .get();
+
+        if (!productDoc.exists) continue;
+
+        final product = productDoc.data()!;
+        final price = ((product['netRate'] ?? product['price']) as num?)?.toInt() ?? 0;
+        final discountRate = ((product['discountRate'] ?? product['itemDiscount'] ?? 0) as num).toInt().clamp(0, price);
+        final lineTotal = (price - discountRate) * entry.value;
+        items.add({'productId': entry.key, 'name': product['name'] ?? 'Product', 'price': price, 'discountRate': discountRate, 'quantity': entry.value, 'amount': lineTotal});
+        total += lineTotal;
+      }
+
+      if (items.isEmpty) {
+        throw Exception('Products nahi mile.');
+      }
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('Order place karne ke liye login karein.');
+      }
+
+      Map<String, dynamic> customerProfile = {};
+      try {
+        final profileDoc = await FirebaseFirestore.instance
+            .collection('customers')
+            .doc(user.uid)
+            .get();
+        customerProfile = profileDoc.data() ?? {};
+      } catch (_) {}
+
+      final orderCounter = FirebaseFirestore.instance.collection('counters').doc('customer_orders');
+      final orderNo = await FirebaseFirestore.instance.runTransaction<int>((transaction) async {
+        final counterSnapshot = await transaction.get(orderCounter);
+        final next = ((counterSnapshot.data()?['nextNumber'] ?? 1) as num).toInt();
+        transaction.set(orderCounter, {'nextNumber': next + 1}, SetOptions(merge: true));
+        return next;
+      });
+      await FirebaseFirestore.instance.collection('orders').add({
+        'orderNo': orderNo,
+        'invoiceNo': orderNo,
+        'customerId': user.uid,
+        'customerEmail': user.email ?? '',
+        'customerName': customerProfile['shopName'] ?? '',
+        'customerPhone': customerProfile['contact'] ?? '',
+        'customerAddress': customerProfile['address'] ?? '',
+        'items': items,
+        'total': total,
+        'paidAmount': 0,
+        'balance': total,
+        'paymentStatus': 'Unpaid',
+        'status': 'Pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!context.mounted) return;
+
+      cart.clear();
+
+      // Short confirmation sound after the order is successfully saved.
+      await SystemSound.play(SystemSoundType.alert);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order place ho gaya.'),
+        ),
+      );
+
+      onOrderPlaced?.call();
+    } catch (e) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Order nahi hua: $e'),
+        ),
+      );
+    }
+  }
+
+
+
 class CustomerScreen extends StatefulWidget {
   final VoidCallback? onOpenOrders;
   final VoidCallback? onOpenCart;
@@ -381,36 +508,27 @@ class _CustomerScreenState extends State<CustomerScreen> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  Row(
-                    children: [
-                      IconButton(
-                        onPressed: quantity > 0
-                            ? () {
-                                setState(() {
-                                  if (quantity == 1) {
-                                    cart.remove(document.id);
-                                  } else {
-                                    cart[document.id] = quantity - 1;
-                                  }
-                                });
-                              }
-                            : null,
-                        icon: const Icon(Icons.remove_circle_outline),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          cart[document.id] = (cart[document.id] ?? 0) + 1;
+                        });
+                        SystemSound.play(SystemSoundType.click);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('$name cart mein add ho gaya.')),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: quantity > 0 ? Colors.white : Colors.green.shade700,
+                        foregroundColor: quantity > 0 ? Colors.green.shade700 : Colors.white,
+                        side: BorderSide(color: Colors.green.shade700),
                       ),
-                      Text('$quantity'),
-                      IconButton(
-                        onPressed: () {
-                          setState(() {
-                            cart[document.id] = quantity + 1;
-                          });
-                        },
-                        icon: const Icon(
-                          Icons.add_circle_outline,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
+                      icon: Icon(quantity > 0 ? Icons.check_circle : Icons.add_shopping_cart),
+                      label: Text(quantity > 0 ? 'Add More • Cart: $quantity' : 'Add to Cart'),
+                    ),
+                  ),,
                 ],
               ),
             ),
@@ -437,126 +555,15 @@ class _CustomerScreenState extends State<CustomerScreen> {
   }
 
   Future<void> placeOrder({bool skipConfirmation = false}) async {
-    if (cart.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pehle products cart mein add karein.'),
-        ),
-      );
-      return;
-    }
-
-    final confirmed = skipConfirmation ? true : await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Order Confirm'),
-        content: Text(
-          'Kya aap $totalItems items ka order place karna chahte hain?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Place Order'),
-          ),
-        ],
-      ),
+    await placeFNSCustomerOrder(
+      context,
+      cart: cart,
+      totalItems: totalItems,
+      skipConfirmation: skipConfirmation,
+      onOrderPlaced: widget.onOpenOrders,
     );
-
-    if (confirmed != true || !mounted) return;
-
-    try {
-      final items = <Map<String, dynamic>>[];
-      int total = 0;
-
-      for (final entry in cart.entries) {
-        final productDoc = await FirebaseFirestore.instance
-            .collection('products')
-            .doc(entry.key)
-            .get();
-
-        if (!productDoc.exists) continue;
-
-        final product = productDoc.data()!;
-        final price = ((product['netRate'] ?? product['price']) as num?)?.toInt() ?? 0;
-        final discountRate = ((product['discountRate'] ?? product['itemDiscount'] ?? 0) as num).toInt().clamp(0, price);
-        final lineTotal = (price - discountRate) * entry.value;
-        items.add({'productId': entry.key, 'name': product['name'] ?? 'Product', 'price': price, 'discountRate': discountRate, 'quantity': entry.value, 'amount': lineTotal});
-        total += lineTotal;
-      }
-
-      if (items.isEmpty) {
-        throw Exception('Products nahi mile.');
-      }
-
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('Order place karne ke liye login karein.');
-      }
-
-      Map<String, dynamic> customerProfile = {};
-      try {
-        final profileDoc = await FirebaseFirestore.instance
-            .collection('customers')
-            .doc(user.uid)
-            .get();
-        customerProfile = profileDoc.data() ?? {};
-      } catch (_) {}
-
-      final orderCounter = FirebaseFirestore.instance.collection('counters').doc('customer_orders');
-      final orderNo = await FirebaseFirestore.instance.runTransaction<int>((transaction) async {
-        final counterSnapshot = await transaction.get(orderCounter);
-        final next = ((counterSnapshot.data()?['nextNumber'] ?? 1) as num).toInt();
-        transaction.set(orderCounter, {'nextNumber': next + 1}, SetOptions(merge: true));
-        return next;
-      });
-      await FirebaseFirestore.instance.collection('orders').add({
-        'orderNo': orderNo,
-        'invoiceNo': orderNo,
-        'customerId': user.uid,
-        'customerEmail': user.email ?? '',
-        'customerName': customerProfile['shopName'] ?? '',
-        'customerPhone': customerProfile['contact'] ?? '',
-        'customerAddress': customerProfile['address'] ?? '',
-        'items': items,
-        'total': total,
-        'paidAmount': 0,
-        'balance': total,
-        'paymentStatus': 'Unpaid',
-        'status': 'Pending',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      if (!mounted) return;
-
-      setState(() {
-        cart.clear();
-      });
-
-      // Short confirmation sound after the order is successfully saved.
-      await SystemSound.play(SystemSoundType.alert);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Order place ho gaya.'),
-        ),
-      );
-
-      widget.onOpenOrders?.call();
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Order nahi hua: $e'),
-        ),
-      );
-    }
+    if (mounted) setState(() {});
   }
-
 
   Widget _buildCustomerDrawer() {
     return Drawer(
@@ -789,13 +796,6 @@ class _CustomerScreenState extends State<CustomerScreen> {
                     children: rows,
                   );
                 },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: SizedBox(
-                width: double.infinity,
-                child: SlideToOrderButton(itemCount: totalItems, onComplete: () => placeOrder(skipConfirmation: true)),
               ),
             ),
           ],
