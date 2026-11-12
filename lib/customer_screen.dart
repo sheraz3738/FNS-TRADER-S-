@@ -528,7 +528,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                       icon: Icon(quantity > 0 ? Icons.check_circle : Icons.add_shopping_cart),
                       label: Text(quantity > 0 ? 'Add More • Cart: $quantity' : 'Add to Cart'),
                     ),
-                  ),,
+                  ),
                 ],
               ),
             ),
