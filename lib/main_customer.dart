@@ -437,14 +437,21 @@ class FavoriteScreen extends StatelessWidget {
 }
 
 class AiSearchScreen extends StatefulWidget {
-  const AiSearchScreen({super.key});
+  final String initialCategory;
+  const AiSearchScreen({super.key, this.initialCategory = ''});
 
   @override
   State<AiSearchScreen> createState() => _AiSearchScreenState();
 }
 
 class _AiSearchScreenState extends State<AiSearchScreen> {
-  String selected = '';
+  late String selected;
+
+  @override
+  void initState() {
+    super.initState();
+    selected = widget.initialCategory;
+  }
 
   @override
   Widget build(BuildContext context) {
