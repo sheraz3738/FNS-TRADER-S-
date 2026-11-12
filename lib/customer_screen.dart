@@ -575,8 +575,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
         onPanUpdate: (details) {
           setState(() {
             whatsappOffset = Offset(
-              (safePosition.dx + details.delta.dx).clamp(0.0, maxX).toDouble(),
-              (safePosition.dy + details.delta.dy).clamp(0.0, maxY).toDouble(),
+              (safePosition.dx + details.delta.dx * 2.5).clamp(0.0, maxX).toDouble(),
+              (safePosition.dy + details.delta.dy * 2.5).clamp(0.0, maxY).toDouble(),
             );
           });
         },
