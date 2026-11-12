@@ -96,7 +96,7 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
         onOpenProfile: () => Navigator.push(context,
           MaterialPageRoute(builder: (_) => const ProfileSettingsScreen())),
       ),
-      const CartScreen(),
+      CartScreen(onOrderPlaced: () => setState(() => currentIndex = 2)),
       const MyOrdersScreen(),
     ];
 
@@ -351,11 +351,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 }
 
 class CartScreen extends StatefulWidget {
-  const CartScreen({super.key});
+  final VoidCallback? onOrderPlaced;
+  const CartScreen({super.key, this.onOrderPlaced});
   @override State<CartScreen> createState() => _CartScreenState();
 }
 
 class _CartScreenState extends State<CartScreen> {
+  int get totalItems => fnsCustomerCart.values.fold(0, (sum, q) => sum + q);
+
   @override
   Widget build(BuildContext context) {
     final entries = fnsCustomerCart.entries.toList();
@@ -363,27 +366,59 @@ class _CartScreenState extends State<CartScreen> {
       appBar: AppBar(title: const Text('My Cart')),
       body: entries.isEmpty
           ? const Center(child: Text('Cart abhi khali hai. Home se products add karein.'))
-          : ListView(padding: const EdgeInsets.all(12), children: [
-              for (final entry in entries)
-                FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                  future: FirebaseFirestore.instance.collection('products').doc(entry.key).get(),
-                  builder: (context, snapshot) {
-                    final product = snapshot.data?.data() ?? {};
-                    final name = (product['name'] ?? 'Product').toString();
-                    final rate = ((product['netRate'] ?? product['price']) as num?)?.toInt() ?? 0;
-                    return Card(child: ListTile(
-                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('Rs. ' + rate.toString() + ' × ' + entry.value.toString() + ' = Rs. ' + (rate * entry.value).toString()),
-                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                        IconButton(onPressed: () => setState(() { if (entry.value <= 1) { fnsCustomerCart.remove(entry.key); } else { fnsCustomerCart[entry.key] = entry.value - 1; } }), icon: const Icon(Icons.remove_circle_outline)),
-                        Text(entry.value.toString()),
-                        IconButton(onPressed: () => setState(() { fnsCustomerCart[entry.key] = entry.value + 1; }), icon: const Icon(Icons.add_circle_outline, color: Colors.green)),
-                        IconButton(onPressed: () => setState(() => fnsCustomerCart.remove(entry.key)), icon: const Icon(Icons.delete_outline, color: Colors.red)),
-                      ]),
-                    ));
-                  },
+          : Column(
+              children: [
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(12),
+                    children: [
+                      for (final entry in entries)
+                        FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                          future: FirebaseFirestore.instance.collection('products').doc(entry.key).get(),
+                          builder: (context, snapshot) {
+                            final product = snapshot.data?.data() ?? {};
+                            final name = (product['name'] ?? 'Product').toString();
+                            final rate = ((product['netRate'] ?? product['price']) as num?)?.toInt() ?? 0;
+                            final discount = ((product['discountRate'] ?? product['itemDiscount'] ?? 0) as num).toInt().clamp(0, rate);
+                            final lineTotal = (rate - discount) * entry.value;
+                            return Card(
+                              child: ListTile(
+                                title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text('Rate: Rs. $rate  •  Discount: Rs. $discount\n${entry.value} × Rs. ${rate - discount} = Rs. $lineTotal'),
+                                isThreeLine: true,
+                                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  IconButton(onPressed: () => setState(() { if (entry.value <= 1) { fnsCustomerCart.remove(entry.key); } else { fnsCustomerCart[entry.key] = entry.value - 1; } }), icon: const Icon(Icons.remove_circle_outline)),
+                                  Text(entry.value.toString()),
+                                  IconButton(onPressed: () => setState(() { fnsCustomerCart[entry.key] = entry.value + 1; }), icon: const Icon(Icons.add_circle_outline, color: Colors.green)),
+                                  IconButton(onPressed: () => setState(() => fnsCustomerCart.remove(entry.key)), icon: const Icon(Icons.delete_outline, color: Colors.red)),
+                                ]),
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
                 ),
-            ]),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: SlideToOrderButton(
+                      itemCount: totalItems,
+                      onComplete: () {
+                        placeFNSCustomerOrder(
+                          context,
+                          cart: fnsCustomerCart,
+                          totalItems: totalItems,
+                          skipConfirmation: true,
+                          onOrderPlaced: widget.onOrderPlaced,
+                        ).then((_) { if (mounted) setState(() {}); });
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
