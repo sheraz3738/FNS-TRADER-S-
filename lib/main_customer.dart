@@ -538,6 +538,44 @@ class MyOrdersScreen extends StatefulWidget {
 }
 
 class _MyOrdersScreenState extends State<MyOrdersScreen> {
+  void showCustomerBill(BuildContext context, Map<String, dynamic> order) {
+    final items = (order['items'] as List?) ?? [];
+    final total = ((order['total'] ?? 0) as num).toInt();
+    final paid = ((order['paidAmount'] ?? 0) as num).toInt();
+    final balance = ((order['balance'] ?? (total - paid)) as num).toInt();
+    showDialog<void>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('FNS TRADERS - INVOICE'),
+      content: SizedBox(width: double.maxFinite, child: SingleChildScrollView(child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Center(child: Image.asset('fns_logo.png', height: 65, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Text('FNS TRADERS', style: TextStyle(fontWeight: FontWeight.bold)))),
+          const Center(child: Text('BABA FALAK NAZ & SONS TRADERS')),
+          const Center(child: Text('Plot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi', textAlign: TextAlign.center)),
+          const Divider(),
+          Text('Invoice No: ${order['invoiceNo'] ?? order['orderNo'] ?? '-'}'),
+          Text('Date: ${(order['createdAt'] is Timestamp) ? (order['createdAt'] as Timestamp).toDate().toString().substring(0, 16) : '-'}'),
+          const Divider(),
+          const Text('S.No   Product / Item   Rate   Discount Rate   Total', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+          const Divider(),
+          for (var i = 0; i < items.length; i++) Builder(builder: (_) {
+            final item = Map<String, dynamic>.from(items[i] as Map);
+            final rate = ((item['price'] ?? item['rate'] ?? 0) as num).toInt();
+            final discountRate = ((item['discountRate'] ?? item['itemDiscount'] ?? 0) as num).toInt();
+            final qty = ((item['quantity'] ?? item['qty'] ?? 0) as num).toInt();
+            final amount = ((item['amount'] ?? ((rate - discountRate) * qty)) as num).toInt();
+            return Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${i + 1}. ${item['name'] ?? 'Product'}'),
+              Text('Rate: Rs. $rate   Discount Rate: Rs. $discountRate   Total: Rs. $amount', style: const TextStyle(fontSize: 11)),
+            ]));
+          }),
+          const Divider(),
+          Align(alignment: Alignment.centerRight, child: Text('Grand Total: Rs. $total', style: const TextStyle(fontWeight: FontWeight.bold))),
+          Text('Payment: ${order['paymentStatus'] ?? (paid >= total ? 'Paid' : paid > 0 ? 'Partial Paid' : 'Unpaid')}'),
+          Text('Paid: Rs. $paid'), Text('Balance: Rs. $balance'),
+        ],
+      ))),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+    ));
+  }
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -574,17 +612,18 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
               return Card(
                 margin: const EdgeInsets.all(10),
-                child: ListTile(
-                  leading: const Icon(Icons.receipt_long),
-                  title: Text('Order ${data['orderNo'] ?? docs[index].id}'),
-                  subtitle: Text(
-                    'Status: $status\n'
-                    'Items: ${items.length}\n'
-                    'Total: Rs. ${data['total'] ?? 0}',
-                  ),
-                  isThreeLine: true,
-                  trailing: canCancel ? TextButton(
-                    onPressed: () async {
+                child: Column(children: [
+                  ListTile(
+                    leading: const Icon(Icons.receipt_long),
+                    title: Text('Order / Invoice ${data['invoiceNo'] ?? data['orderNo'] ?? docs[index].id}'),
+                    subtitle: Text(
+                      'Status: $status\n'
+                      'Items: ${items.length}\n'
+                      'Total: Rs. ${data['total'] ?? 0}',
+                    ),
+                    isThreeLine: true,
+                    trailing: canCancel ? TextButton(
+                      onPressed: () async {
                       final yes = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
@@ -612,9 +651,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                         );
                       }
                     },
-                    child: const Text('Cancel', style: TextStyle(color: Colors.red)),
-                  ) : Text(status.toString()),
-                ),
+                      child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+                    ) : Text(status.toString()),
+                  ),
+                  Align(alignment: Alignment.centerRight, child: TextButton.icon(
+                    onPressed: () => showCustomerBill(context, data),
+                    icon: const Icon(Icons.receipt_long), label: const Text('View Bill'),
+                  )),
+                ]),
               );
             },
           );

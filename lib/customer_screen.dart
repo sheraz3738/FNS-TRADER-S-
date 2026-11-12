@@ -115,8 +115,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       Navigator.pop(context);
                     }
                   : null,
-              icon: const Icon(Icons.add_shopping_cart),
-              label: Text('Add to Cart ($quantity)'),
+              style: ElevatedButton.styleFrom(backgroundColor: quantity > 0 ? Colors.white : Colors.green.shade700, foregroundColor: quantity > 0 ? Colors.green.shade700 : Colors.white, side: BorderSide(color: Colors.green.shade700)),
+              icon: Icon(quantity > 0 ? Icons.check_circle : Icons.add_shopping_cart),
+              label: Text(quantity > 0 ? 'Added to Cart ($quantity)' : 'Add to Cart ($quantity)'),
             ),
           ),
         ],
@@ -421,7 +422,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
     );
   }
 
-  Future<void> placeOrder() async {
+  Future<void> placeOrder({bool skipConfirmation = false}) async {
     if (cart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -431,7 +432,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = skipConfirmation ? true : await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Order Confirm'),
@@ -467,15 +468,10 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
         final product = productDoc.data()!;
         final price = ((product['netRate'] ?? product['price']) as num?)?.toInt() ?? 0;
-
-        items.add({
-          'productId': entry.key,
-          'name': product['name'] ?? 'Product',
-          'price': price,
-          'quantity': entry.value,
-        });
-
-        total += price * entry.value;
+        final discountRate = ((product['discountRate'] ?? product['itemDiscount'] ?? 0) as num).toInt().clamp(0, price);
+        final lineTotal = (price - discountRate) * entry.value;
+        items.add({'productId': entry.key, 'name': product['name'] ?? 'Product', 'price': price, 'discountRate': discountRate, 'quantity': entry.value, 'amount': lineTotal});
+        total += lineTotal;
       }
 
       if (items.isEmpty) {
@@ -505,6 +501,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
       });
       await FirebaseFirestore.instance.collection('orders').add({
         'orderNo': orderNo,
+        'invoiceNo': orderNo,
         'customerId': user.uid,
         'customerEmail': user.email ?? '',
         'customerName': customerProfile['shopName'] ?? '',
@@ -512,6 +509,9 @@ class _CustomerScreenState extends State<CustomerScreen> {
         'customerAddress': customerProfile['address'] ?? '',
         'items': items,
         'total': total,
+        'paidAmount': 0,
+        'balance': total,
+        'paymentStatus': 'Unpaid',
         'status': 'Pending',
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -681,11 +681,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                 children: [
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: placeOrder,
-                      icon: const Icon(Icons.shopping_cart_checkout),
-                      label: Text('Order Now ($totalItems items)'),
-                    ),
+                    child: SlideToOrderButton(itemCount: totalItems, onComplete: () => placeOrder(skipConfirmation: true)),
                   ),
                   Row(
                     children: [
@@ -732,3 +728,24 @@ class _CustomerScreenState extends State<CustomerScreen> {
     );
   }
 }
+
+class SlideToOrderButton extends StatefulWidget {
+  final int itemCount;
+  final VoidCallback onComplete;
+  const SlideToOrderButton({super.key, required this.itemCount, required this.onComplete});
+  @override State<SlideToOrderButton> createState() => _SlideToOrderButtonState();
+}
+class _SlideToOrderButtonState extends State<SlideToOrderButton> {
+  double value = 0;
+  @override Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+    decoration: BoxDecoration(color: Colors.green.shade700, borderRadius: BorderRadius.circular(14)),
+    child: Column(children: [
+      Text('Slide to Place Order (${widget.itemCount} items)', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      SliderTheme(data: SliderTheme.of(context).copyWith(activeTrackColor: Colors.white, inactiveTrackColor: Colors.white54, thumbColor: Colors.white, overlayColor: Colors.white24),
+        child: Slider(value: value, min: 0, max: 1, onChanged: widget.itemCount == 0 ? null : (v) {
+          setState(() => value = v);
+          if (v >= 0.98) { setState(() => value = 0); widget.onComplete(); }
+        })),
+    ]),
+  );

@@ -74,6 +74,7 @@ class _AdminScreenState extends State<AdminScreen> {
   Future<void> productForm({String? id, Map<String,dynamic>? data}) async {
     final name = TextEditingController(text: data?['name']?.toString() ?? '');
     final netRate = TextEditingController(text: (data?['netRate'] ?? '').toString());
+    final discountRate = TextEditingController(text: (data?['discountRate'] ?? 0).toString());
     final price = TextEditingController(text: (data?['retailPrice'] ?? data?['price'] ?? '').toString());
     final stock = TextEditingController(text: data?['stock']?.toString() ?? '0');
     String category = productCategories.contains(data?['category']) ? data!['category'].toString() : 'Other Items';
@@ -102,6 +103,7 @@ class _AdminScreenState extends State<AdminScreen> {
           },
         ),
         TextField(controller: netRate, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Net customer rate (Rs.)')),
+        TextField(controller: discountRate, keyboardType: const TextInputType.numberWithOptions(decimal: false), decoration: const InputDecoration(labelText: 'Customer discount per item (Rs.)')),
         TextField(controller: price, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Retail price (Rs.)')),
         TextField(controller: stock, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stock quantity')),
       ])),
@@ -111,7 +113,8 @@ class _AdminScreenState extends State<AdminScreen> {
           final p = double.tryParse(price.text.trim());
           final n = double.tryParse(netRate.text.trim().isEmpty ? '0' : netRate.text.trim());
           final s = int.tryParse(stock.text.trim());
-          if (name.text.trim().isEmpty || p == null || p < 0 || n == null || n < 0 || s == null) {
+          final d = int.tryParse(discountRate.text.trim()) ?? 0;
+          if (name.text.trim().isEmpty || p == null || p < 0 || n == null || n < 0 || s == null || d < 0 || d > n) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name, valid price aur stock likhein.'))); return;
           }
           setD(()=>saving=true);
@@ -121,7 +124,7 @@ class _AdminScreenState extends State<AdminScreen> {
               await ref.putData(bytes!, SettableMetadata(contentType: 'image/jpeg'));
               imageUrl = await ref.getDownloadURL();
             }
-            final payload = {'name':name.text.trim(),'category':category,'netRate':n,'retailPrice':p,'price':p,'stock':s,'imageUrl':imageUrl ?? '', 'updatedAt':FieldValue.serverTimestamp()};
+            final payload = {'name':name.text.trim(),'category':category,'netRate':n,'discountRate':d,'retailPrice':p,'price':p,'stock':s,'imageUrl':imageUrl ?? '', 'updatedAt':FieldValue.serverTimestamp()};
             if (id == null) { payload['createdAt'] = FieldValue.serverTimestamp(); await FirebaseFirestore.instance.collection('products').add(payload); }
             else { await FirebaseFirestore.instance.collection('products').doc(id).update(payload); }
             if (ctx.mounted) Navigator.pop(ctx);
@@ -132,7 +135,7 @@ class _AdminScreenState extends State<AdminScreen> {
         }, child: saving ? const SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2)) : const Text('Save')),
       ],
     )));
-    name.dispose(); price.dispose(); netRate.dispose(); stock.dispose();
+    name.dispose(); price.dispose(); netRate.dispose(); discountRate.dispose(); stock.dispose();
   }
 
   int get subtotal => cart.values.fold(0, (n,p)=>n+(p['price'] as int)*(p['qty'] as int));
@@ -544,6 +547,7 @@ class _AdminScreenState extends State<AdminScreen> {
           }).join('\n');
           final customerId = (data['customerId'] ?? '').toString();
           final status = (data['status'] ?? 'Pending').toString();
+          final paidController = TextEditingController(text: ((data['paidAmount'] ?? 0) as num).toString());
           return Card(
             child: ListTile(
               onTap: () async {
@@ -571,6 +575,38 @@ class _AdminScreenState extends State<AdminScreen> {
                             const SizedBox(height: 8),
                             Text('Status: ${data['status'] ?? 'Pending'}'),
                             Text('Total: Rs. ${data['total'] ?? 0}'),
+                            Text('Payment: ${data['paymentStatus'] ?? 'Unpaid'}'),
+                            Text('Paid: Rs. ${data['paidAmount'] ?? 0}'),
+                            Text('Balance: Rs. ${data['balance'] ?? data['total'] ?? 0}'),
+                            const SizedBox(height: 10),
+                            TextField(controller: paidController, keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(labelText: 'Payment received (Rs.)', border: OutlineInputBorder())),
+                            const SizedBox(height: 6),
+                            Wrap(spacing: 8, children: [
+                              FilledButton(onPressed: () async {
+                                final total = ((data['total'] ?? 0) as num).toInt();
+                                final paid = (int.tryParse(paidController.text.trim()) ?? 0).clamp(0, total);
+                                final balance = total - paid;
+                                final paymentStatus = balance == 0 ? 'Paid' : paid > 0 ? 'Partial Paid' : 'Unpaid';
+                                try {
+                                  await doc.reference.update({'paidAmount': paid, 'balance': balance, 'paymentStatus': paymentStatus, 'paymentUpdatedAt': FieldValue.serverTimestamp()});
+                                  data['paidAmount'] = paid; data['balance'] = balance; data['paymentStatus'] = paymentStatus;
+                                  setDialogState(() {});
+                                } catch (e) {
+                                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Payment save nahi hui: $e')));
+                                }
+                              }, child: const Text('Save Payment')),
+                              OutlinedButton(onPressed: () async {
+                                final total = ((data['total'] ?? 0) as num).toInt();
+                                try {
+                                  await doc.reference.update({'paidAmount': total, 'balance': 0, 'paymentStatus': 'Paid', 'paymentUpdatedAt': FieldValue.serverTimestamp()});
+                                  data['paidAmount'] = total; data['balance'] = 0; data['paymentStatus'] = 'Paid';
+                                  paidController.text = total.toString(); setDialogState(() {});
+                                } catch (e) {
+                                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Paid status save nahi hua: $e')));
+                                }
+                              }, child: const Text('Mark Paid')),
+                            ]),
                             const SizedBox(height: 12),
                             const Text('Items', style: TextStyle(fontWeight: FontWeight.bold)),
                             Text(itemLines.isEmpty ? 'No item details found' : itemLines),
