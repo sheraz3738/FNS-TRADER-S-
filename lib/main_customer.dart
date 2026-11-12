@@ -90,10 +90,14 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      CustomerScreen(onOpenOrders: () => setState(() => currentIndex = 2)),
+      CustomerScreen(
+        onOpenCart: () => setState(() => currentIndex = 1),
+        onOpenOrders: () => setState(() => currentIndex = 2),
+        onOpenProfile: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const ProfileSettingsScreen())),
+      ),
       const CartScreen(),
       const MyOrdersScreen(),
-      const AiSearchScreen(),
     ];
 
     return PopScope(
@@ -112,7 +116,6 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
             BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'My Orders'),
-            BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: 'AI'),
           ],
         ),
       ),
