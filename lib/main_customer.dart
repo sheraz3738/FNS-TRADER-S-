@@ -93,11 +93,13 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
       CustomerScreen(
         onOpenCart: () => setState(() => currentIndex = 1),
         onOpenOrders: () => setState(() => currentIndex = 2),
-        onOpenProfile: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const ProfileSettingsScreen())),
+        onOpenProfile: () => setState(() => currentIndex = 3),
+        onOpenAi: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const AiSearchScreen())),
       ),
       CartScreen(onOrderPlaced: () => setState(() => currentIndex = 2)),
       const MyOrdersScreen(),
+      const ProfileSettingsScreen(),
     ];
 
     return PopScope(
@@ -116,6 +118,7 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
             BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'My Orders'),
+            BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
           ],
         ),
       ),
@@ -447,18 +450,24 @@ class _AiSearchScreenState extends State<AiSearchScreen> {
       body: Column(
         children: [
           if (selected.isEmpty) ...[
-            const SizedBox(height: 24),
-            _choiceCard(
-              icon: Icons.trending_up,
-              title: 'Trending',
-              subtitle: 'Popular products',
-              onTap: () => setState(() => selected = 'Trending'),
-            ),
-            _choiceCard(
-              icon: Icons.lightbulb_outline,
-              title: 'Suggestions',
-              subtitle: 'Recommended products',
-              onTap: () => setState(() => selected = 'Suggestions'),
+            const SizedBox(height: 18),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(children: [
+                Expanded(child: _choiceCard(
+                  icon: Icons.trending_up,
+                  title: 'Trending',
+                  subtitle: 'Popular items',
+                  onTap: () => setState(() => selected = 'Trending'),
+                )),
+                const SizedBox(width: 8),
+                Expanded(child: _choiceCard(
+                  icon: Icons.lightbulb_outline,
+                  title: 'Suggestions',
+                  subtitle: 'Recommended',
+                  onTap: () => setState(() => selected = 'Suggestions'),
+                )),
+              ]),
             ),
           ] else ...[
             Padding(
@@ -543,14 +552,22 @@ class _AiSearchScreenState extends State<AiSearchScreen> {
     required VoidCallback onTap,
   }) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(18),
-        leading: Icon(icon, color: Colors.green, size: 34),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, color: Colors.green, size: 25),
+            const SizedBox(height: 5),
+            Text(title, textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            Text(subtitle, textAlign: TextAlign.center,
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          ]),
+        ),
       ),
     );
   }
