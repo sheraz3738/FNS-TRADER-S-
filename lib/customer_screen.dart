@@ -602,22 +602,6 @@ class _CustomerScreenState extends State<CustomerScreen> {
           children: [
             buildHeader(),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: widget.onOpenAi,
-                  icon: const Icon(Icons.auto_awesome, size: 18),
-                  label: const Text('AI Trending / Suggestions'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.green.shade800,
-                    side: BorderSide(color: Colors.green.shade700),
-                    padding: const EdgeInsets.symmetric(vertical: 11),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
               padding: const EdgeInsets.all(10),
               child: TextField(
                 controller: searchController,
