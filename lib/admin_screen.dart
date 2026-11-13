@@ -731,7 +731,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 );
               },
               leading: Icon(status == 'Confirmed' ? Icons.check_circle : Icons.shopping_bag, color: status == 'Confirmed' ? Colors.green : Colors.orange),
-              title: Text('Order ${data['orderNo'] ?? doc.id}'),
+              title: Text('Order ${formatFNSOrderNumber(data['orderNo'] ?? doc.id)}'),
               subtitle: Text(
                 '${data['customerName'] ?? data['customerEmail'] ?? 'Customer'}\n'
                 '$status\n'
