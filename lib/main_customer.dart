@@ -8,6 +8,11 @@ import 'package:flutter/services.dart';
 import 'customer_screen.dart';
 import 'firebase_options.dart';
 
+String formatFNSOrderNumber(dynamic value) {
+  final number = int.tryParse((value ?? '').toString());
+  return number == null ? (value ?? '-').toString() : number.toString().padLeft(4, '0');
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -614,7 +619,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           const Center(child: Text('BABA FALAK NAZ & SONS TRADERS')),
           const Center(child: Text('Plot No. A-46, Sector 8/A, Bilal Colony, K.I.A Karachi', textAlign: TextAlign.center)),
           const Divider(),
-          Text('Invoice No: ${order['invoiceNo'] ?? order['orderNo'] ?? '-'}'),
+          Text('Invoice No: ${formatFNSOrderNumber(order['invoiceNo'] ?? order['orderNo'] ?? '-')}'),
           Text('Date: ${(order['createdAt'] is Timestamp) ? (order['createdAt'] as Timestamp).toDate().toString().substring(0, 16) : '-'}'),
           const Divider(),
           const Text('S.No   Product / Item   Rate   Discount Rate   Total', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
@@ -678,7 +683,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 child: Column(children: [
                   ListTile(
                     leading: const Icon(Icons.receipt_long),
-                    title: Text('Order / Invoice ${data['invoiceNo'] ?? data['orderNo'] ?? docs[index].id}'),
+                    title: Text('Order / Invoice ${formatFNSOrderNumber(data['invoiceNo'] ?? data['orderNo'] ?? docs[index].id)}'),
                     subtitle: Text(
                       'Status: $status\n'
                       'Items: ${items.length}\n'
