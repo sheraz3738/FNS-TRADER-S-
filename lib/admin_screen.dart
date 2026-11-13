@@ -138,6 +138,44 @@ class _AdminScreenState extends State<AdminScreen> {
     name.dispose(); price.dispose(); netRate.dispose(); discountRate.dispose(); stock.dispose();
   }
 
+  Future<void> deleteProduct(String id, Map<String,dynamic> data) async {
+    final name = (data['name'] ?? 'this product').toString();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete product?'),
+        content: Text('Kya aap "$name" ko product list se delete karna chahte hain? Yeh action undo nahi hoga.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      final imageUrl = (data['imageUrl'] ?? '').toString();
+      await FirebaseFirestore.instance.collection('products').doc(id).delete();
+      cart.remove(id);
+      if (imageUrl.isNotEmpty) {
+        try { await FirebaseStorage.instance.refFromURL(imageUrl).delete(); } catch (_) {}
+      }
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('"$name" delete ho gaya.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Product delete nahi hua: $e')),
+      );
+    }
+  }
+
   int get subtotal => cart.values.fold(0, (n,p)=>n+(p['price'] as int)*(p['qty'] as int));
   int get itemDiscountTotal => cart.values.fold(0, (n,p)=>n+(((p['itemDiscount'] ?? 0) as num).toInt()*(p['qty'] as int)));
   int get finalTotal => (subtotal - itemDiscountTotal - (int.tryParse(discount.text) ?? 0)).clamp(0, 1<<31);
@@ -393,6 +431,11 @@ class _AdminScreenState extends State<AdminScreen> {
                       tooltip: 'Edit',
                       icon: const Icon(Icons.edit, color: Colors.blue),
                       onPressed: () => productForm(id: d.id, data: p),
+                    ),
+                    IconButton(
+                      tooltip: 'Delete product',
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => deleteProduct(d.id, p),
                     ),
                   ]),
                 ),
