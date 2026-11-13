@@ -6,6 +6,11 @@ import 'package:printing/printing.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 
+String _formatFNSOrderNumber(dynamic value) {
+  final number = int.tryParse((value ?? '').toString());
+  return number == null ? (value ?? '-').toString() : number.toString().padLeft(4, '0');
+}
+
 class PrintService {
   
   static Future<void> printA4Bill(Map<String, dynamic> data, {Uint8List? logoBytes}) async {
@@ -27,7 +32,7 @@ class PrintService {
               pw.Center(child: pw.Text("Plot L 34, Sec 15-B, K.I.A Karachi")),
               pw.Center(child: pw.Text("0334-3738405", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
               pw.Divider(),
-              pw.Text("Order: ${data['orderNo']}"),
+              pw.Text("Order: ${_formatFNSOrderNumber(data['orderNo'])}"),
               pw.Text("Date: ${data['date']}"),
               pw.Text("Customer: ${data['customerName']}"),
               pw.Text("Mobile: ${data['mobile']}"),
@@ -67,7 +72,7 @@ class PrintService {
       bytes += generator.text("Plot L 34, Sec 15-B, K.I.A Karachi", styles: const PosStyles(align: PosAlign.center));
       bytes += generator.text("0334-3738405", styles: const PosStyles(align: PosAlign.center, bold: true));
       bytes += generator.hr();
-      bytes += generator.text("Order: ${data['orderNo']}");
+      bytes += generator.text("Order: ${_formatFNSOrderNumber(data['orderNo'])}");
       bytes += generator.text("Date: ${data['date']}");
       bytes += generator.text("Customer: ${data['customerName']}");
       bytes += generator.text("Mobile: ${data['mobile']}");
