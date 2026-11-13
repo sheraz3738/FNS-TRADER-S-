@@ -14,6 +14,11 @@ import 'package:pdf/pdf.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+String formatFNSOrderNumber(dynamic value) {
+  final number = int.tryParse((value ?? '').toString());
+  return number == null ? (value ?? '-').toString() : number.toString().padLeft(4, '0');
+}
+
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
   @override State<AdminScreen> createState() => _AdminScreenState();
@@ -525,7 +530,7 @@ class _AdminScreenState extends State<AdminScreen> {
           pw.Center(child: pw.Text('Phone: $businessPhone')),
           pw.Divider(),
           pw.Text('ORDER BILL', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-          pw.Text('Order No: ${order['orderNo'] ?? orderId}'),
+          pw.Text('Order No: ${formatFNSOrderNumber(order['orderNo'] ?? orderId)}'),
           pw.Text('Date: ${now.toString().substring(0, 16)}'),
           pw.Text('Customer / Shop: ${customerData['shopName'] ?? 'Customer'}'),
           pw.Text('Mobile: ${customerData['contact'] ?? ''}'),
@@ -606,7 +611,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   context: context,
                   builder: (dialogContext) => StatefulBuilder(
                     builder: (dialogContext, setDialogState) => AlertDialog(
-                      title: Text('Order ${data['orderNo'] ?? doc.id}'),
+                      title: Text('Order ${formatFNSOrderNumber(data['orderNo'] ?? doc.id)}'),
                       content: SingleChildScrollView(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -678,7 +683,7 @@ class _AdminScreenState extends State<AdminScreen> {
                               context: dialogContext,
                               builder: (ctx) => AlertDialog(
                                 title: const Text('Cancel Order?'),
-                                content: Text('Order ${data['orderNo'] ?? doc.id} cancel karna hai?'),
+                                content: Text('Order ${formatFNSOrderNumber(data['orderNo'] ?? doc.id)} cancel karna hai?'),
                                 actions: [
                                   TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
                                   FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yes, Cancel')),
