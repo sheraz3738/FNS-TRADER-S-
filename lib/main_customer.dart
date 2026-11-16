@@ -412,17 +412,39 @@ class _CartScreenState extends State<CartScreen> {
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
                   child: SizedBox(
                     width: double.infinity,
-                    child: SlideToOrderButton(
-                      itemCount: totalItems,
-                      onComplete: () {
-                        placeFNSCustomerOrder(
-                          context,
-                          cart: fnsCustomerCart,
-                          totalItems: totalItems,
-                          skipConfirmation: true,
-                          onOrderPlaced: widget.onOrderPlaced,
-                        ).then((_) { if (mounted) setState(() {}); });
-                      },
+                    height: 54,
+                    child: ElevatedButton.icon(
+                      onPressed: totalItems == 0
+                          ? null
+                          : () {
+                              placeFNSCustomerOrder(
+                                context,
+                                cart: fnsCustomerCart,
+                                totalItems: totalItems,
+                                skipConfirmation: true,
+                                onOrderPlaced: widget.onOrderPlaced,
+                              ).then((_) {
+                                if (mounted) setState(() {});
+                              });
+                            },
+                      icon: const Icon(Icons.shopping_bag_outlined),
+                      label: const Text(
+                        'ORDER',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade700,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade400,
+                        disabledForegroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
                     ),
                   ),
                 ),
