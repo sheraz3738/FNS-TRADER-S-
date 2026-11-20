@@ -538,22 +538,23 @@ class _AdminScreenState extends State<AdminScreen> {
           pw.Text('Address: ${customerData['address'] ?? ''}'),
           pw.SizedBox(height: 12),
           pw.TableHelper.fromTextArray(
-            headers: ['S.No', 'Product', 'Qty', 'Rate', 'Amount'],
+            headers: ['S.No', 'Product', 'Qty', 'Rate', 'Discount', 'Amount'],
             data: [
               for (int i = 0; i < items.length; i++)
                 () {
                   final m = Map<String, dynamic>.from(items[i] as Map);
                   final qty = (m['quantity'] ?? m['qty'] ?? 0) as num;
                   final price = (m['price'] ?? m['rate'] ?? 0) as num;
-                  final amount = (m['amount'] ?? (qty * price)) as num;
-                  return ['${i + 1}', '${m['name'] ?? 'Product'}', '${qty}', 'Rs. ${price}', 'Rs. ${amount}'];
+                  final discount = (m['discountRate'] ?? m['itemDiscount'] ?? 0) as num;
+                  final amount = (m['amount'] ?? (qty * (price - discount))) as num;
+                  return ['${i + 1}', '${m['name'] ?? 'Product'}', '${qty}', 'Rs. ${price}', 'Rs. ${discount}', 'Rs. ${amount}'];
                 }(),
             ],
           ),
           pw.SizedBox(height: 12),
           pw.Align(
             alignment: pw.Alignment.centerRight,
-            child: pw.Text('TOTAL: Rs. ${order['total'] ?? 0}', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+            child: pw.Container(padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: pw.BoxDecoration(border: pw.Border.all(width: 1), borderRadius: pw.BorderRadius.circular(5)), child: pw.Text('GRAND TOTAL: Rs. ${order['total'] ?? 0}', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold))),
           ),
           pw.SizedBox(height: 24),
           pw.Center(child: pw.Text(expiryNote, textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 9))),
