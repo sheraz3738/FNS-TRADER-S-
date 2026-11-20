@@ -1,0 +1,45 @@
+name: Build and Publish FNS Customer Web App
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: stable
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Customer Web App
+        run: flutter build web --release --target lib/main_customer.dart --base-href /FNS-TRADER-S-/customer/
+
+      - name: Prepare GitHub Pages site
+        run: |
+          set -e
+          mkdir -p public/customer
+          cp -R build/web/. public/customer/
+          cp index.html public/index.html
+          cp fns_logo.png public/fns_logo.png
+
+      - name: Publish to GitHub Pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./public
+          force_orphan: true
