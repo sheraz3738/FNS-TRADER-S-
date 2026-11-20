@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -87,7 +88,7 @@ class _MainCustomerWrapperState extends State<MainCustomerWrapper> {
         ],
       ),
     );
-    if (shouldExit == true) {
+    if (shouldExit == true && !kIsWeb) {
       await SystemNavigator.pop();
     }
   }
