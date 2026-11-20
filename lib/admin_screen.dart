@@ -26,7 +26,6 @@ class AdminScreen extends StatefulWidget {
 
 class _AdminScreenState extends State<AdminScreen> {
   int tab = 0;
-  int orderStatusTab = 0;
   String search = '';
   static const List<String> productCategories = ['Medicines','Syrups','Tablets/Capsules','Syringes','Surgical Items','BP & Sugar','General Items','Medical Equipment','Other Items'];
   final ScrollController welcomeController = ScrollController();
@@ -602,7 +601,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
                 ),
                 child: FittedBox(fit: BoxFit.scaleDown,
-                  child: Text('${statuses[i]} ($count)', style: const TextStyle(fontWeight: FontWeight.bold))),
+                  child: Text('${statuses[i]} (${count})', style: const TextStyle(fontWeight: FontWeight.bold))),
               ),
             ));
           })),
@@ -766,12 +765,11 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
               isThreeLine: true,
               trailing: Text('Rs. ${data['total'] ?? 0}'),
-          },
+            ),
+          );
+        },
       )),
       ]);
-    },
-  );   },
-      );
     },
   );
 
