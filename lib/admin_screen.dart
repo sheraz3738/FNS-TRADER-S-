@@ -26,6 +26,7 @@ class AdminScreen extends StatefulWidget {
 
 class _AdminScreenState extends State<AdminScreen> {
   int tab = 0;
+  int orderStatusTab = 0;
   String search = '';
   static const List<String> productCategories = ['Medicines','Syrups','Tablets/Capsules','Syringes','Surgical Items','BP & Sugar','General Items','Medical Equipment','Other Items'];
   final ScrollController welcomeController = ScrollController();
@@ -578,11 +579,37 @@ class _AdminScreenState extends State<AdminScreen> {
       if (!snapshot.hasData) {
         return const Center(child: CircularProgressIndicator());
       }
-      final docs = snapshot.data!.docs;
-      if (docs.isEmpty) {
-        return const Center(child: Text('Abhi koi customer order nahi hai.'));
-      }
-      return ListView.builder(
+      final allDocs = snapshot.data!.docs;
+      final statuses = ['Pending', 'Confirmed', 'Cancelled'];
+      final selectedStatus = statuses[orderStatusTab];
+      final docs = allDocs.where((doc) =>
+        (doc.data()['status'] ?? 'Pending').toString() == selectedStatus
+      ).toList();
+      return Column(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 10, 8, 4),
+          child: Row(children: List.generate(statuses.length, (i) {
+            final count = allDocs.where((doc) =>
+              (doc.data()['status'] ?? 'Pending').toString() == statuses[i]
+            ).length;
+            return Expanded(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: FilledButton.tonal(
+                onPressed: () => setState(() => orderStatusTab = i),
+                style: FilledButton.styleFrom(
+                  backgroundColor: orderStatusTab == i ? Colors.green.shade700 : Colors.grey.shade200,
+                  foregroundColor: orderStatusTab == i ? Colors.white : Colors.black87,
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                ),
+                child: FittedBox(fit: BoxFit.scaleDown,
+                  child: Text('${statuses[i]} ($count)', style: const TextStyle(fontWeight: FontWeight.bold))),
+              ),
+            ));
+          })),
+        ),
+        Expanded(child: docs.isEmpty
+          ? Center(child: Text('Abhi koi ${selectedStatus.toLowerCase()} order nahi hai.'))
+          : ListView.builder(
         padding: const EdgeInsets.all(10),
         itemCount: docs.length,
         itemBuilder: (context, index) {
@@ -739,9 +766,11 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
               isThreeLine: true,
               trailing: Text('Rs. ${data['total'] ?? 0}'),
-            ),
-          );
-        },
+          },
+      )),
+      ]);
+    },
+  );   },
       );
     },
   );
