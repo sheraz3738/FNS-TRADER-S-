@@ -627,7 +627,9 @@ class MyOrdersScreen extends StatefulWidget {
   State<MyOrdersScreen> createState() => _MyOrdersScreenState();
 }
 
-class _MyOrdersScreenState extends State<MyOrdersScreen> {\n  int selectedStatusIndex = 0;\n  final List<String> orderStatuses = const ['Pending', 'Confirmed', 'Cancelled'];
+class _MyOrdersScreenState extends State<MyOrdersScreen> {
+  int selectedStatusIndex = 0;
+  final List<String> orderStatuses = const ['Pending', 'Confirmed', 'Cancelled'];
   Widget _billBox(String label, String value, {bool strong = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
