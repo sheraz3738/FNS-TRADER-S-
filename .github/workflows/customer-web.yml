@@ -38,6 +38,8 @@ jobs:
           cp -R build/web/. public/customer/
           cp index.html public/index.html
           cp fns_logo.png public/fns_logo.png
+          cp fns-slide1.jpg public/fns-slide1.jpg
+          cp fns-slide2.jpg public/fns-slide2.jpg
 
       - name: Publish to GitHub Pages branch
         uses: peaceiris/actions-gh-pages@v4
