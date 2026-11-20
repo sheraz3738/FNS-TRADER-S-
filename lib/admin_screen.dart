@@ -26,6 +26,7 @@ class AdminScreen extends StatefulWidget {
 
 class _AdminScreenState extends State<AdminScreen> {
   int tab = 0;
+  int orderStatusTab = 0;
   String search = '';
   static const List<String> productCategories = ['Medicines','Syrups','Tablets/Capsules','Syringes','Surgical Items','BP & Sugar','General Items','Medical Equipment','Other Items'];
   final ScrollController welcomeController = ScrollController();
