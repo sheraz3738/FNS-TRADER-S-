@@ -627,7 +627,21 @@ class MyOrdersScreen extends StatefulWidget {
   State<MyOrdersScreen> createState() => _MyOrdersScreenState();
 }
 
-class _MyOrdersScreenState extends State<MyOrdersScreen> {
+class _MyOrdersScreenState extends State<MyOrdersScreen> {\n  int selectedStatusIndex = 0;\n  final List<String> orderStatuses = const ['Pending', 'Confirmed', 'Cancelled'];
+  Widget _billBox(String label, String value, {bool strong = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade500),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.black54)),
+        Text(value, style: TextStyle(fontSize: 12, fontWeight: strong ? FontWeight.bold : FontWeight.w600)),
+      ]),
+    );
+  }
+
   void showCustomerBill(BuildContext context, Map<String, dynamic> order) {
     final items = (order['items'] as List?) ?? [];
     final total = ((order['total'] ?? 0) as num).toInt();
@@ -643,22 +657,33 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           const Divider(),
           Text('Invoice No: ${formatFNSOrderNumber(order['invoiceNo'] ?? order['orderNo'] ?? '-')}'),
           Text('Date: ${(order['createdAt'] is Timestamp) ? (order['createdAt'] as Timestamp).toDate().toString().substring(0, 16) : '-'}'),
+          Text('Customer: ${order['customerName'] ?? '-'}'),
+          Text('Mobile: ${order['customerPhone'] ?? '-'}'),
+          Text('Address: ${order['customerAddress'] ?? '-'}'),
+          Text('Order Status: ${order['status'] ?? 'Pending'}'),
           const Divider(),
-          const Text('S.No   Product / Item   Rate   Discount Rate   Total', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-          const Divider(),
+          const Text('PRODUCT DETAILS', style: TextStyle(fontWeight: FontWeight.bold)),
           for (var i = 0; i < items.length; i++) Builder(builder: (_) {
             final item = Map<String, dynamic>.from(items[i] as Map);
             final rate = ((item['price'] ?? item['rate'] ?? 0) as num).toInt();
             final discountRate = ((item['discountRate'] ?? item['itemDiscount'] ?? 0) as num).toInt();
             final qty = ((item['quantity'] ?? item['qty'] ?? 0) as num).toInt();
             final amount = ((item['amount'] ?? ((rate - discountRate) * qty)) as num).toInt();
-            return Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${i + 1}. ${item['name'] ?? 'Product'}'),
-              Text('Rate: Rs. $rate   Discount Rate: Rs. $discountRate   Total: Rs. $amount', style: const TextStyle(fontSize: 11)),
-            ]));
+            return Card(margin: const EdgeInsets.symmetric(vertical: 4), child: Padding(
+              padding: const EdgeInsets.all(8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${i + 1}. ${item['name'] ?? 'Product'}  ×  $qty', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  _billBox('Rate', 'Rs. $rate'),
+                  _billBox('Discount', 'Rs. $discountRate'),
+                  _billBox('Amount', 'Rs. $amount', strong: true),
+                ]),
+              ]),
+            ));
           }),
           const Divider(),
-          Align(alignment: Alignment.centerRight, child: Text('Grand Total: Rs. $total', style: const TextStyle(fontWeight: FontWeight.bold))),
+          Align(alignment: Alignment.centerRight, child: _billBox('GRAND TOTAL', 'Rs. $total', strong: true)),
+          const SizedBox(height: 8),
           Text('Payment: ${order['paymentStatus'] ?? (paid >= total ? 'Paid' : paid > 0 ? 'Partial Paid' : 'Unpaid')}'),
           Text('Paid: Rs. $paid'), Text('Balance: Rs. $balance'),
         ],
@@ -687,12 +712,37 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final docs = snapshot.data!.docs;
-          if (docs.isEmpty) {
-            return const Center(child: Text('Abhi koi order nahi hai.'));
-          }
+          final allDocs = snapshot.data!.docs;
+          final selectedStatus = orderStatuses[selectedStatusIndex];
+          final docs = allDocs.where((doc) =>
+            (doc.data()['status'] ?? 'Pending').toString() == selectedStatus
+          ).toList();
 
-          return ListView.builder(
+          return Column(children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 10, 8, 4),
+              child: Row(children: List.generate(orderStatuses.length, (i) {
+                final count = allDocs.where((doc) =>
+                  (doc.data()['status'] ?? 'Pending').toString() == orderStatuses[i]
+                ).length;
+                return Expanded(child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: FilledButton.tonal(
+                    onPressed: () => setState(() => selectedStatusIndex = i),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: selectedStatusIndex == i ? Colors.green.shade700 : Colors.grey.shade200,
+                      foregroundColor: selectedStatusIndex == i ? Colors.white : Colors.black87,
+                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 10),
+                    ),
+                    child: FittedBox(fit: BoxFit.scaleDown,
+                      child: Text('${orderStatuses[i]} ($count)', style: const TextStyle(fontWeight: FontWeight.bold))),
+                  ),
+                ));
+              })),
+            ),
+            Expanded(child: docs.isEmpty
+              ? Center(child: Text('Abhi koi ${selectedStatus.toLowerCase()} order nahi hai.'))
+              : ListView.builder(
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final data = docs[index].data();
@@ -751,7 +801,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 ]),
               );
             },
-          );
+          )),
+          ]);
         },
       ),
     );
