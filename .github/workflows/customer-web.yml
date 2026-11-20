@@ -40,7 +40,7 @@ jobs:
           cp fns_logo.png public/fns_logo.png
           if [ -f fns-slide1.jpg ]; then cp fns-slide1.jpg public/fns-slide1.jpg; fi
           if [ -f fns-slide2.jpg ]; then cp fns-slide2.jpg public/fns-slide2.jpg; fi
-          if [ -f fns-slide3.svg ]; then cp fns-slide3.svg public/fns-slide3.svg; fi
+          if [ -f fns-slide3.jpg ]; then cp fns-slide3.jpg public/fns-slide3.jpg; fi
 
       - name: Publish to GitHub Pages branch
         uses: peaceiris/actions-gh-pages@v4
