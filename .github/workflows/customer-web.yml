@@ -18,9 +18,11 @@ jobs:
 
       - name: Unpack Full HD slideshow photos when uploaded
         run: |
-          if [ -f FNS-TRADERS-Slideshow-Full-HD.zip ]; then
-            unzip -o FNS-TRADERS-Slideshow-Full-HD.zip -d .
-          fi
+          for zip_file in FNS-TRADERS-Slideshow-Full-HD*.zip; do
+            if [ -f "$zip_file" ]; then
+              unzip -o "$zip_file" -d .
+            fi
+          done
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
