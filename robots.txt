@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sheraz3738.github.io/FNS-TRADER-S-/sitemap.xml
