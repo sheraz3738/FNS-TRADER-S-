@@ -62,12 +62,21 @@ Future<void> placeFNSCustomerOrder(
         final price = ((product['netRate'] ?? product['price']) as num?)?.toInt() ?? 0;
         final discountRate = ((product['discountRate'] ?? product['itemDiscount'] ?? 0) as num).toInt().clamp(0, price);
         final lineTotal = (price - discountRate) * entry.value;
-        items.add({'productId': entry.key, 'name': product['name'] ?? 'Product', 'price': price, 'discountRate': discountRate, 'quantity': entry.value, 'amount': lineTotal});
+        items.add({'productId': entry.key, 'name': product['name'] ?? 'Product', 'company': product['company'] ?? '', 'packInfo': product['packInfo'] ?? '', 'price': price, 'discountRate': discountRate, 'quantity': entry.value, 'amount': lineTotal});
         total += lineTotal;
       }
 
       if (items.isEmpty) {
         throw Exception('Products nahi mile.');
+      }
+
+      final limitDoc = await FirebaseFirestore.instance.collection('settings').doc('order_limit').get();
+      final minimumOrder = ((limitDoc.data()?['amount'] ?? 0) as num).toInt();
+      if (minimumOrder > 0 && total < minimumOrder) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Minimum order Rs. $minimumOrder hai. Aapka cart total Rs. $total hai.')));
+        }
+        return;
       }
 
       final user = FirebaseAuth.instance.currentUser;
@@ -186,6 +195,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final retailRate = ((product['retailPrice'] ?? product['price']) as num?)?.toInt() ?? 0;
     final imageUrl = (product['imageUrl'] ?? '').toString();
     final description = (product['description'] ?? '').toString();
+    final company = (product['company'] ?? '').toString();
+    final packInfo = (product['packInfo'] ?? '').toString();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Product Details')),
@@ -208,7 +219,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               child: Icon(Icons.medication, size: 100, color: Colors.blue),
             ),
           const SizedBox(height: 20),
+          if (company.isNotEmpty) Text(company, style: TextStyle(fontSize: 16, color: Colors.green.shade700, fontWeight: FontWeight.w600)),
           Text(name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          if (packInfo.isNotEmpty) Text(packInfo, style: const TextStyle(fontSize: 15, color: Colors.blueGrey)), 
           const SizedBox(height: 12),
           Text('Net Rate: Rs. $netRate',
               style: const TextStyle(fontSize: 18, color: Colors.green, fontWeight: FontWeight.bold)),
@@ -436,6 +449,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
     final price = ((data['netRate'] ?? data['price']) as num?)?.toInt() ?? 0;
     final retailPrice = ((data['retailPrice'] ?? data['price']) as num?)?.toInt() ?? 0;
     final imageUrl = (data['imageUrl'] ?? '').toString();
+    final company = (data['company'] ?? '').toString();
+    final packInfo = (data['packInfo'] ?? '').toString();
     final quantity = cart[document.id] ?? 0;
     final isFavorite = favorites.contains(document.id);
 
@@ -479,6 +494,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (company.isNotEmpty) Text(company, style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w600)),
                   Text(
                     name,
                     style: const TextStyle(
@@ -486,6 +502,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  if (packInfo.isNotEmpty) Text(packInfo, style: const TextStyle(color: Colors.blueGrey)),
                   const SizedBox(height: 5),
                   Text(
                     'Net Rate: Rs. $price',
