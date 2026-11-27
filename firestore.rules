@@ -17,6 +17,12 @@ service cloud.firestore {
       allow create, update, delete: if isFnsAdmin();
     }
 
+    // Minimum order amount: admin manages it; customers can read it before checkout.
+    match /settings/order_limit {
+      allow read: if signedIn();
+      allow create, update, delete: if isFnsAdmin();
+    }
+
     // Invoices are private business records.
     match /invoices/{invoiceId} {
       allow read, write: if isFnsAdmin();
