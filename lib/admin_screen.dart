@@ -13,6 +13,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'admin_limit_screen.dart';
 
 String formatFNSOrderNumber(dynamic value) {
   final number = int.tryParse((value ?? '').toString());
@@ -79,6 +80,8 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> productForm({String? id, Map<String,dynamic>? data}) async {
     final name = TextEditingController(text: data?['name']?.toString() ?? '');
+    final company = TextEditingController(text: data?['company']?.toString() ?? '');
+    final packInfo = TextEditingController(text: data?['packInfo']?.toString() ?? '');
     final netRate = TextEditingController(text: (data?['netRate'] ?? '').toString());
     final discountRate = TextEditingController(text: (data?['discountRate'] ?? 0).toString());
     final price = TextEditingController(text: (data?['retailPrice'] ?? data?['price'] ?? '').toString());
@@ -98,6 +101,8 @@ class _AdminScreenState extends State<AdminScreen> {
           if (x != null) { bytes = await x.readAsBytes(); setD(() {}); }
         }, icon: const Icon(Icons.photo_library), label: const Text('Choose picture from gallery')),
         TextField(controller: name, decoration: const InputDecoration(labelText: 'Product name')),
+        TextField(controller: company, decoration: const InputDecoration(labelText: 'Company name (e.g. PharmEvo)')),
+        TextField(controller: packInfo, decoration: const InputDecoration(labelText: 'Box quantity (e.g. 14 Tablets / 120ml)')),
         DropdownButtonFormField<String>(
           value: category,
           decoration: const InputDecoration(labelText: 'Product category'),
@@ -130,7 +135,7 @@ class _AdminScreenState extends State<AdminScreen> {
               await ref.putData(bytes!, SettableMetadata(contentType: 'image/jpeg'));
               imageUrl = await ref.getDownloadURL();
             }
-            final payload = {'name':name.text.trim(),'category':category,'netRate':n,'discountRate':d,'retailPrice':p,'price':p,'stock':s,'imageUrl':imageUrl ?? '', 'updatedAt':FieldValue.serverTimestamp()};
+            final payload = {'name':name.text.trim(),'company':company.text.trim(),'packInfo':packInfo.text.trim(),'category':category,'netRate':n,'discountRate':d,'retailPrice':p,'price':p,'stock':s,'imageUrl':imageUrl ?? '', 'updatedAt':FieldValue.serverTimestamp()};
             if (id == null) { payload['createdAt'] = FieldValue.serverTimestamp(); await FirebaseFirestore.instance.collection('products').add(payload); }
             else { await FirebaseFirestore.instance.collection('products').doc(id).update(payload); }
             if (ctx.mounted) Navigator.pop(ctx);
@@ -141,7 +146,7 @@ class _AdminScreenState extends State<AdminScreen> {
         }, child: saving ? const SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2)) : const Text('Save')),
       ],
     )));
-    name.dispose(); price.dispose(); netRate.dispose(); discountRate.dispose(); stock.dispose();
+    name.dispose(); company.dispose(); packInfo.dispose(); price.dispose(); netRate.dispose(); discountRate.dispose(); stock.dispose();
   }
 
   Future<void> deleteProduct(String id, Map<String,dynamic> data) async {
@@ -1007,6 +1012,16 @@ class _AdminScreenState extends State<AdminScreen> {
             subtitle: const Text('Products tab se item, retail price aur stock; Inventory tab se purchase, sale aur expenses manage karein.'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => setState(() => tab = 2),
+          ),
+        ),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: ListTile(
+            leading: const Icon(Icons.tune, color: Colors.green),
+            title: const Text('Minimum Order Limit'),
+            subtitle: const Text('Customer ke order ki minimum amount set karein.'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminLimitScreen())),
           ),
         ),
         Card(
